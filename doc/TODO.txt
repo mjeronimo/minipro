@@ -1,0 +1,21 @@
+
+[ ] Research
+[ ] 	Provide research references in /doc
+
+[ ] Segway MiniPRO Bluetooth protocol
+[ ] 	Reverse engineer Segway MiniPRO Bluetooth protocol using Ubertooth One and Wireshark
+[ ] 	Document the protocol, create a PDF
+[ ] 	Create a Wireshark plug-in
+
+[ ] Programmatic interfaces to the MiniPRO
+[ ] 	Create a C++ interface
+[ ] 	Create a Python interface
+
+[ ] Video Demos
+[ ] 	#1: "Reverse engineering the Segway MiniPRO Bluetooth protocol using Ubertooth One and Wireshark"
+[ ] 	#2: "Using bluetoothctl and gattclient to manually control a Segway MiniPRO"
+[ ] 	#3: "Programmatic control of a Segway MiniPRO over Bluetooth"
+
+[ ] Simulation
+[ ]     Create a Gazebo model of the miniPRO-based robot
+
