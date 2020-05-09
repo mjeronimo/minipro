@@ -67,7 +67,7 @@ int main(int, char **)
     minipro.disable_notifications();
 
   } catch (std::exception & ex) {
-    std::cerr << "minipro: Unhandled exception: " << ex.what() << std::endl;
+    std::cerr << "minipro: exception: " << ex.what() << std::endl;
     return -1;
   }
 

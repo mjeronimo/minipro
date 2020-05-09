@@ -60,14 +60,13 @@ BluetoothLEDevice::BluetoothLEDevice(
 
   fd = l2cap_le_att_connect(&src_addr, &dst_addr, dst_type, sec, verbose);
   if (fd < 0) {
-	throw std::runtime_error("BluetoothLEDevice: Failed to connect to Bluetooth device");
-
+    throw std::runtime_error("BluetoothLEDevice: Failed to connect to Bluetooth device");
   }
 
   cli = client_create(fd, mtu, verbose);
   if (!cli) {
     close(fd);
-	throw std::runtime_error("BluetoothLEDevice: client_create failed");
+    throw std::runtime_error("BluetoothLEDevice: client_create failed");
   }
 
   bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, this, nullptr);
@@ -80,7 +79,7 @@ BluetoothLEDevice::BluetoothLEDevice(
   if (cv_.wait_for(lk, 5s, [this]{ return ready_; })) {
     printf("BluetoothLEDevice: Initialized OK\n");
   } else {
-	throw std::runtime_error("BluetoothLEDevice: Did NOT initialize OK");
+    throw std::runtime_error("BluetoothLEDevice: Did NOT initialize OK");
   }
 }
 
