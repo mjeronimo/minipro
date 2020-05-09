@@ -15,7 +15,9 @@
 #ifndef BLUETOOTH_BLUETOOTH_LE_DEVICE_HPP_
 #define BLUETOOTH_BLUETOOTH_LE_DEVICE_HPP_
 
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -46,10 +48,9 @@ public:
   ~BluetoothLEDevice();
 
   void get_security();
-  void quit(char * cmd_str);
-  void read_long_value(char * cmd_str);
+  void read_long_value(uint16_t handle, uint16_t value);
   void read_multiple(char * cmd_str);
-  void read_value(char * cmd_str);
+  void read_value(uint16_t handle);
   void register_notify(uint16_t value_handle);
   void set_security(char * cmd_str);
   void set_sign_key(char * cmd_str);
@@ -59,7 +60,7 @@ public:
   void write_prepare(char * cmd_str);
   void write_value(char * cmd_str);
 
-private:
+protected:
   // TODO: inline the client structure here
   struct client * cli;
   int fd;
@@ -67,9 +68,15 @@ private:
   void process_input();
   std::unique_ptr<std::thread> input_thread_;
 
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  bool ready_{false};
+
 public:
   static void att_disconnect_cb(int err, void * user_data);
   static void att_debug_cb(const char * str, void * user_data);
+  static void ready_cb(bool success, uint8_t att_ecode, void * user_data);
+  static void print_uuid(const bt_uuid_t * uuid);
 };
 
 }

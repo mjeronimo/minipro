@@ -19,6 +19,7 @@
 #include <string>
 
 #include "bluetooth/bluetooth_le_device.hpp"
+#include "util/units.hpp"
 
 namespace minipro
 {

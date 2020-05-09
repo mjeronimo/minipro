@@ -22,6 +22,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -31,14 +32,16 @@
 #include "util/joystick.hpp"
 #include "bluetooth/utils.hpp"
 
+using namespace std::chrono_literals;
+
 namespace bluetooth
 {
 
-static int l2cap_le_att_connect(
-  bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec,
-  bool verbose);
+static int l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, bool verbose);
 static struct client * client_create(int fd, uint16_t mtu, bool verbose);
 static void client_destroy(struct client * cli);
+static void ready_cb(bool success, uint8_t att_ecode, void * user_data);
+static void service_changed_cb(uint16_t start_handle, uint16_t end_handle, void * user_data);
 
 BluetoothLEDevice::BluetoothLEDevice(
   const std::string & device_address, uint8_t dst_type, int sec,
@@ -57,26 +60,39 @@ BluetoothLEDevice::BluetoothLEDevice(
 
   fd = l2cap_le_att_connect(&src_addr, &dst_addr, dst_type, sec, verbose);
   if (fd < 0) {
-    throw("l2cap_le_att_connect failed");
+	throw std::runtime_error("BluetoothLEDevice: Failed to connect to Bluetooth device");
+
   }
 
   cli = client_create(fd, mtu, verbose);
   if (!cli) {
     close(fd);
-    throw("client_create failed");
+	throw std::runtime_error("BluetoothLEDevice: client_create failed");
   }
+
+  bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, this, nullptr);
+  bt_gatt_client_set_service_changed(cli->gatt, service_changed_cb, this, nullptr);
 
   input_thread_ = std::make_unique<std::thread>(std::bind(&BluetoothLEDevice::process_input, this));
 
-  // TODO(mjeronimo): wait for client ready
+  // Wait for client to be ready
+  std::unique_lock<std::mutex> lk(mutex_);
+  if (cv_.wait_for(lk, 5s, [this]{ return ready_; })) {
+    printf("BluetoothLEDevice: Initialized OK\n");
+  } else {
+	throw std::runtime_error("BluetoothLEDevice: Did NOT initialize OK");
+  }
 }
 
 BluetoothLEDevice::~BluetoothLEDevice()
 {
+  printf("BluetoothLEDevice::~BluetoothLEDevice\n");
   mainloop_quit();
+  printf("BluetoothLEDevice::~BluetoothLEDevice: after calling mainloop_quit\n");
   input_thread_->join();
-  printf("\n\nShutting down...\n");
+  printf("BluetoothLEDevice: Shutting down...\n");
   client_destroy(cli);
+  printf("BluetoothLEDevice::~BluetoothLEDevice: after client_destroy\n");
 }
 
 void
@@ -103,9 +119,6 @@ gatt_debug_cb(const char * str, void * user_data)
   const char * prefix = (const char *) user_data;
   printf(COLOR_GREEN "%s%s\n" COLOR_OFF, prefix, str);
 }
-
-static void ready_cb(bool success, uint8_t att_ecode, void * user_data);
-static void service_changed_cb(uint16_t start_handle, uint16_t end_handle, void * user_data);
 
 static void
 service_added_cb(struct gatt_db_attribute * attr, void * user_data)
@@ -189,8 +202,8 @@ client_create(int fd, uint16_t mtu, bool verbose)
       reinterpret_cast<void *>(const_cast<char *>("gatt: ")), nullptr);
   }
 
-  bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, cli, nullptr);
-  bt_gatt_client_set_service_changed(cli->gatt, service_changed_cb, cli, nullptr);
+  //bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, cli, nullptr);
+  //bt_gatt_client_set_service_changed(cli->gatt, service_changed_cb, cli, nullptr);
 
   // bt_gatt_client already holds a reference
   gatt_db_unref(cli->db);
@@ -206,8 +219,8 @@ client_destroy(struct client * cli)
   free(cli);
 }
 
-static void
-print_uuid(const bt_uuid_t * uuid)
+void
+BluetoothLEDevice::print_uuid(const bt_uuid_t * uuid)
 {
   char uuid_str[MAX_LEN_UUID_STR];
   bt_uuid_t uuid128;
@@ -247,7 +260,7 @@ print_included_data(struct gatt_db_attribute * attr, void * user_data)
     "\t  " COLOR_GREEN "include" COLOR_OFF " - handle: "
     "0x%04x, - start: 0x%04x, end: 0x%04x,"
     "uuid: ", handle, start, end);
-  print_uuid(&uuid);
+  BluetoothLEDevice::print_uuid(&uuid);
 }
 
 static void
@@ -256,7 +269,7 @@ print_descriptor(struct gatt_db_attribute * attr, void * user_data)
   printf(
     "\t\t  " COLOR_MAGENTA "descr" COLOR_OFF " - handle: 0x%04x, uuid: ",
     gatt_db_attribute_get_handle(attr));
-  print_uuid(gatt_db_attribute_get_type(attr));
+  BluetoothLEDevice::print_uuid(gatt_db_attribute_get_type(attr));
 }
 
 static void
@@ -279,7 +292,7 @@ print_characteristic(struct gatt_db_attribute * attr, void * user_data)
     " - start: 0x%04x, value: 0x%04x, "
     "props: 0x%02x, uuid: ",
     handle, value_handle, properties);
-  print_uuid(&uuid);
+  BluetoothLEDevice::print_uuid(&uuid);
 
   gatt_db_service_foreach_desc(attr, print_descriptor, nullptr);
 }
@@ -300,7 +313,7 @@ print_service(struct gatt_db_attribute * attr, void * user_data)
     COLOR_RED "service" COLOR_OFF " - start: 0x%04x, "
     "end: 0x%04x, type: %s, uuid: ",
     start, end, primary ? "primary" : "secondary");
-  print_uuid(&uuid);
+  BluetoothLEDevice::print_uuid(&uuid);
 
   gatt_db_service_foreach_incl(attr, print_included_data, cli);
   gatt_db_service_foreach_char(attr, print_characteristic, nullptr);
@@ -315,17 +328,24 @@ print_service(struct gatt_db_attribute * attr, void * user_data)
  * @param att_ecode    att error code
  * @param user_data    pointer to client structure
  */
-static void
-ready_cb(bool success, uint8_t att_ecode, void * user_data)
+void
+BluetoothLEDevice::ready_cb(bool success, uint8_t att_ecode, void * user_data)
 {
-  struct client * cli = (struct client *) user_data;
+  //struct client * cli = (struct client *) user_data;
+  BluetoothLEDevice * This = (BluetoothLEDevice *) user_data;
 
   if (!success) {
     printf("GATT discovery procedures failed - error code: 0x%02x\n", att_ecode);
     return;
   }
 
-  printf("GATT client is ready\n");
+  {
+    std::lock_guard<std::mutex> lk(This->mutex_);
+	This->ready_ = true;
+  }
+
+  This->cv_.notify_all();
+  This->ready_ = true;
 }
 
 /**
@@ -403,9 +423,7 @@ void
 BluetoothLEDevice::read_multiple(char * cmd_str)
 {
   int argc = 0;
-  uint16_t * value;
   char * argv[512];
-  int i;
   char * endptr = nullptr;
 
   if (!bt_gatt_client_is_ready(cli->gatt)) {
@@ -417,13 +435,13 @@ BluetoothLEDevice::read_multiple(char * cmd_str)
     return;
   }
 
-  value = reinterpret_cast<uint16_t *>(malloc(sizeof(uint16_t) * argc));
+  uint16_t * value = reinterpret_cast<uint16_t *>(malloc(sizeof(uint16_t) * argc));
   if (!value) {
     printf("Failed to construct value\n");
     return;
   }
 
-  for (i = 0; i < argc; i++) {
+  for (int i = 0; i < argc; i++) {
     value[i] = strtol(argv[i], &endptr, 0);
     if (endptr == argv[i] || *endptr != '\0' || !value[i]) {
       printf("Invalid value byte: %s\n", argv[i]);
@@ -449,7 +467,7 @@ BluetoothLEDevice::read_multiple(char * cmd_str)
  * @param user_data    not used
  */
 static void
-read_cb(bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length, void * user_data)
+read_cb(bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length, void * /*user_data*/)
 {
   if (!success) {
     printf(
@@ -475,72 +493,28 @@ read_cb(bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length,
 }
 
 void
-BluetoothLEDevice::read_value(char * cmd_str)
+BluetoothLEDevice::read_value(uint16_t handle)
 {
-  char * argv[2];
-  int argc = 0;
-  uint16_t handle;
-  char * endptr = nullptr;
-
   if (!bt_gatt_client_is_ready(cli->gatt)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!parse_args(cmd_str, 1, argv, &argc) || argc != 1) {
-    return;
-  }
-
-  handle = strtol(argv[0], &endptr, 0);
-  if (!endptr || *endptr != '\0' || !handle) {
-    printf("Invalid value handle: %s\n", argv[0]);
-    return;
-  }
-
-  if (!bt_gatt_client_read_value(
-      cli->gatt, handle, read_cb,
-      nullptr, nullptr))
-  {
-    printf("Failed to initiate read value procedure\n");
+  if (!bt_gatt_client_read_value(cli->gatt, handle, read_cb, nullptr, nullptr)) {
+    printf("Failed to initiate read value\n");
   }
 }
 
 void
-BluetoothLEDevice::read_long_value(char * cmd_str)
+BluetoothLEDevice::read_long_value(uint16_t handle, uint16_t offset)
 {
-  char * argv[3];
-  int argc = 0;
-  uint16_t handle;
-  uint16_t offset;
-  char * endptr = nullptr;
-
   if (!bt_gatt_client_is_ready(cli->gatt)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!parse_args(cmd_str, 2, argv, &argc) || argc != 2) {
-    return;
-  }
-
-  handle = strtol(argv[0], &endptr, 0);
-  if (!endptr || *endptr != '\0' || !handle) {
-    printf("Invalid value handle: %s\n", argv[0]);
-    return;
-  }
-
-  endptr = nullptr;
-  offset = strtol(argv[1], &endptr, 0);
-  if (!endptr || *endptr != '\0') {
-    printf("Invalid offset: %s\n", argv[1]);
-    return;
-  }
-
-  if (!bt_gatt_client_read_long_value(
-      cli->gatt, handle, offset, read_cb,
-      nullptr, nullptr))
-  {
-    printf("Failed to initiate read long value procedure\n");
+  if (!bt_gatt_client_read_long_value(cli->gatt, handle, offset, read_cb, nullptr, nullptr)) {
+    printf("Failed to initiate read long value\n");
   }
 }
 
@@ -838,6 +812,7 @@ done:
     value, length,
     write_long_cb, nullptr,
     nullptr);
+
   if (!cli->reliable_session_id) {
     printf("Failed to proceed prepare write\n");
   } else {
@@ -1112,12 +1087,6 @@ BluetoothLEDevice::set_sign_key(char * cmd_str)
   }
 }
 
-void
-BluetoothLEDevice::quit(char * cmd_str)
-{
-  mainloop_quit();
-}
-
 /**
  * create a bluetooth le l2cap socket and connect src to dst
  *
@@ -1128,14 +1097,13 @@ BluetoothLEDevice::quit(char * cmd_str)
  * @return socket or -1 if error
  */
 
-class BluetoothLayer2Socket
+class BluetoothL2Cap2Socket
 {
 };
 
 static int
 l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, bool verbose)
 {
-  struct sockaddr_l2 srcaddr, dstaddr;
   struct bt_security btsec;
 
   char dstaddr_str[18];
@@ -1159,7 +1127,8 @@ l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, 
 
   #define ATT_CID 4
 
-  /* Set up source address */
+  // Set up source address
+  struct sockaddr_l2 srcaddr;
   memset(&srcaddr, 0, sizeof(srcaddr));
   srcaddr.l2_family = AF_BLUETOOTH;
   srcaddr.l2_cid = htobs(ATT_CID);
@@ -1172,7 +1141,8 @@ l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, 
     return -1;
   }
 
-  /* Set the security level */
+  // Set the security level
+  struct sockaddr_l2 dstaddr;
   memset(&btsec, 0, sizeof(btsec));
   btsec.level = sec;
   if (setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &btsec, sizeof(btsec)) != 0) {
@@ -1181,23 +1151,23 @@ l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, 
     return -1;
   }
 
-  /* Set up destination address */
+  // Set up destination address
   memset(&dstaddr, 0, sizeof(dstaddr));
   dstaddr.l2_family = AF_BLUETOOTH;
   dstaddr.l2_cid = htobs(ATT_CID);
   dstaddr.l2_bdaddr_type = dst_type;
   bacpy(&dstaddr.l2_bdaddr, dst);
 
-  printf("BluetoothLEDevice: Connecting to device (%s)...", dstaddr_str);
+  printf("BluetoothLEDevice: Connecting to device (%s)...\n", dstaddr_str);
   fflush(stdout);
 
   if (connect(sock, (struct sockaddr *) &dstaddr, sizeof(dstaddr)) < 0) {
-    perror(" BluetoothLEDevice: Failed to connect");
+    printf("BluetoothLEDevice: Failed to connect to device\n");
     close(sock);
     return -1;
   }
 
-  printf(" BluetoothLEDevice: Connected\n");
+  printf("BluetoothLEDevice: Connected\n");
   return sock;
 }
 
@@ -1308,7 +1278,9 @@ done:
 void
 BluetoothLEDevice::process_input()
 {
+  printf("BluetoothLEDevice::process_input: calling mainloop_run");
   mainloop_run();
+  printf("BluetoothLEDevice::process_input: aftercalling mainloop_run");
 }
 
 }  // namespace bluetooth

@@ -15,10 +15,12 @@
 #include "util/joystick.hpp"
 
 #include <fcntl.h>
-#include <stdio.h>
 #include <unistd.h>
 #include <linux/joystick.h>
 
+#include <atomic>
+#include <cstdint>
+#include <exception>
 #include <functional>
 #include <memory>
 #include <string>
@@ -31,8 +33,11 @@ namespace util
 Joystick::Joystick(const std::string & device_name)
 {
   if ((fd_ = open(device_name.c_str(), O_RDONLY)) == -1) {
-    throw("Could not open joystick");
+    throw std::runtime_error("Could not open joystick");
   }
+
+  int flags = fcntl(fd_, F_GETFL, 0);
+  fcntl(fd_, F_SETFL, flags | O_NONBLOCK);
 
   input_thread_ = std::make_unique<std::thread>(std::bind(&Joystick::input_thread_func, this));
 }
@@ -45,8 +50,8 @@ Joystick::Joystick()
 Joystick::~Joystick()
 {
   printf("~Joystick\n");
-
-  // TODO(mjeronimo): input_thread_.join();
+  should_exit_.store(true);
+  input_thread_->join();
   close(fd_);
 }
 
@@ -56,71 +61,62 @@ Joystick::input_thread_func()
   struct ::js_event event;
   struct axis_state axes[3] = {0};
 
-  while (read(fd_, &event, sizeof(event)) == sizeof(event)) {
-    switch (event.type) {
-      case JS_EVENT_BUTTON:
-        // printf("Button %u %s\n", event.number, event.value ? "pressed" : "released");
-        if (event.number == 1) {
-          printf("Button %u %s\n", event.number, event.value ? "pressed" : "released");
-          axis0_.store(0);
-          axis1_.store(0);
-        }
-        break;
+  while (!should_exit_) {
+    auto rc = read(fd_, &event, sizeof(event));
 
-      case JS_EVENT_AXIS: {
-          size_t axis = get_axis_state(&event, axes);
-          switch (axis) {
-            case 0:
-              // printf("Axis 0 - x: %6d\n", axes[axis].x);
-              // printf("Axis 0 - y: %6d\n", axes[axis].y);
-              axis0_.store(axes[axis].y);
-              break;
-            case 1:
-              // printf("Axis 1 - x: %6d\n", axes[axis].x);
-              // printf("Axis 2 - y: %6d\n", axes[axis].y);
-              axis1_.store(axes[axis].x);
-              break;
-            case 2:
-              // printf("Axis 2 - x: %6d\n", axes[axis].x);
-              // printf("Axis 2 - y: %6d\n", axes[axis].y);
-              break;
-            case 3:
-              // printf("Axis 3 - x: %6d\n", axes[axis].x);
-              // printf("Axis 3 - y: %6d\n", axes[axis].y);
-              break;
-            default:
-              break;
+    if (rc == -1 && errno == EAGAIN) {
+      continue;
+    } else if (rc == sizeof(event)) {
+      switch (event.type) {
+        case JS_EVENT_BUTTON:
+          // printf("Button %u %s\n", event.number, event.value ? "pressed" : "released");
+          if (event.number == 1) {
+            axis0_.store(0);
+            axis1_.store(0);
           }
           break;
-        }
+  
+        case JS_EVENT_AXIS: {
+            size_t axis = get_axis_state(&event, axes);
+            switch (axis) {
+              case 0:
+                axis0_.store(axes[axis].y);
+                break;
 
-      default:
-        break;
-    }
+              case 1:
+                axis1_.store(axes[axis].x);
+                break;
 
-    fflush(stdout);
+              default:
+                break;
+            }
+            break;
+          }
+  
+        default:
+          break;
+      }
+	  }
   }
 }
 
 size_t
 Joystick::get_axis_count()
 {
-  __u8 num_axes;
+  uint8_t num_axes = 0;;
   if (ioctl(fd_, JSIOCGAXES, &num_axes) == -1) {
-    throw("joystock ioctl (JSIOCGAXES) failed");
+    throw std::runtime_error("Joystick::get_axis_count: ioctl (JSIOCGAXES) failed");
   }
-
   return num_axes;
 }
 
 size_t
 Joystick::get_button_count()
 {
-  __u8 num_buttons;
+  uint8_t num_buttons = 0;
   if (ioctl(fd_, JSIOCGBUTTONS, &num_buttons) == -1) {
-    throw("joystock ioctl (JSIOCGBUTTONS) failed");
+    throw std::runtime_error("Joystick::get_button_count: ioctl (JSIOCGBUTTONS) failed");
   }
-
   return num_buttons;
 }
 

@@ -17,17 +17,16 @@
 
 #include <chrono>
 
+#include "util/units.hpp"
+
 namespace minipro {
 namespace util {
 
 class LoopRate
 {
 public:
-  // TODO: frequency should be in Hz
-  LoopRate(std::chrono::milliseconds frequency);
+  LoopRate(units::frequency::hertz_t frequency);
   LoopRate() = delete;
-
-  ~LoopRate();
 
   void sleep();
 
@@ -35,9 +34,7 @@ private:
   std::chrono::steady_clock::time_point t1_;
   std::chrono::steady_clock::time_point t2_;
 
-  std::chrono::milliseconds frequency_{0};
   std::chrono::milliseconds period_{0};
-  std::chrono::milliseconds one_second_{1000};
 };
 
 }}

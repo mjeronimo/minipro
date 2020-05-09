@@ -47,8 +47,10 @@ private:
   void input_thread_func();
   std::unique_ptr<std::thread> input_thread_;
 
-  std::atomic<short> axis0_;
-  std::atomic<short> axis1_;
+  std::atomic<short> axis0_{0};
+  std::atomic<short> axis1_{0};
+
+  std::atomic<bool> should_exit_{false};
 };
 
 }}

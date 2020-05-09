@@ -193,11 +193,15 @@ int mainloop_run(void)
 
 	exit_status = EXIT_SUCCESS;
 
+    printf("entering while loop\n");
 	while (!epoll_terminate) {
 		struct epoll_event events[MAX_EPOLL_EVENTS];
 		int n, nfds;
 
+        printf("calling epoll_wait\n");
 		nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
+        printf("after calling epoll_wait\n");
+
 		if (nfds < 0)
 			continue;
 
@@ -208,6 +212,8 @@ int mainloop_run(void)
 							data->user_data);
 		}
 	}
+
+	printf("after while loop\n");
 
 	if (signal_data) {
 		mainloop_remove_fd(signal_data->fd);

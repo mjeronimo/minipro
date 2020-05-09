@@ -1,13 +1,13 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.0)
+project(minipro)
 
-project(gattclient)
+set(CMAKE_CXX_STANDARD 14)
 
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-find_package(PkgConfig REQUIRED)
 find_package(Log4cxx REQUIRED)
+find_package(PkgConfig REQUIRED)
 
-pkg_search_module(BLUEZ REQUIRED bluez)
 pkg_search_module(GLIB REQUIRED glib-2.0)
 
 include_directories(include ${GLIB_INCLUDE_DIRS})
