@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MINIPRO_MINIPRO_HPP_
-#define MINIPRO_MINIPRO_HPP_
+#ifndef MINIPRO__MINIPRO_HPP_
+#define MINIPRO__MINIPRO_HPP_
 
 #include <cstdint>
 #include <string>
@@ -21,13 +21,15 @@
 #include "bluetooth/bluetooth_le_device.hpp"
 #include "util/units.hpp"
 
+namespace jaymo
+{
 namespace minipro
 {
 
 class MiniPro : public bluetooth::BluetoothLEDevice
 {
 public:
-  MiniPro(const std::string & bt_address);
+  explicit MiniPro(const std::string & bt_address);
   MiniPro() = delete;
 
   // Use units library (mph, degrees)?
@@ -46,5 +48,6 @@ public:
 };
 
 }  // namespace minipro
+}  // namespace jaymo
 
-#endif // MINIPRO_MINIPRO_HPP_
+#endif  // MINIPRO__MINIPRO_HPP_

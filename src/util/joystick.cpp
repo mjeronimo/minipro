@@ -25,7 +25,9 @@
 #include <memory>
 #include <string>
 
-namespace minipro
+#include "util/loop_rate.hpp"
+
+namespace jaymo
 {
 namespace util
 {
@@ -33,12 +35,23 @@ namespace util
 Joystick::Joystick(const std::string & device_name)
 {
   if ((fd_ = open(device_name.c_str(), O_RDONLY)) == -1) {
-    throw std::runtime_error("Could not open joystick");
+    throw std::runtime_error("Joystick: Couldn't open joystick device");
   }
 
+  if (ioctl(fd_, JSIOCGAXES, &num_axes_) == -1) {
+    throw std::runtime_error("Joystick: ioctl (JSIOCGAXES) failed");
+  }
+
+  if (ioctl(fd_, JSIOCGBUTTONS, &num_buttons_) == -1) {
+    throw std::runtime_error("Joystick: ioctl (JSIOCGBUTTONS) failed");
+  }
+
+  // Set the handle to non-blocking so that the input thread
+  // can break out of its read loop when shutting down
   int flags = fcntl(fd_, F_GETFL, 0);
   fcntl(fd_, F_SETFL, flags | O_NONBLOCK);
 
+  // Launch a separate thread to handle the joystick input
   input_thread_ = std::make_unique<std::thread>(std::bind(&Joystick::input_thread_func, this));
 }
 
@@ -55,18 +68,30 @@ Joystick::~Joystick()
   close(fd_);
 }
 
+size_t
+Joystick::get_axis_state(struct ::js_event * event, AxisState axes[3])
+{
+  size_t axis = event->number / 2;
+  if (axis < 3) {
+    if (event->number % 2 == 0) {
+      axes[axis].x = event->value;
+    } else {
+      axes[axis].y = event->value;
+    }
+  }
+  return axis;
+}
+
 void
 Joystick::input_thread_func()
 {
   struct ::js_event event;
-  struct axis_state axes[3] = {0};
+  AxisState axes[3] = {0};
+
+  jaymo::util::LoopRate loop_rate(30_Hz);
 
   while (!should_exit_) {
-    auto rc = read(fd_, &event, sizeof(event));
-
-    if (rc == -1 && errno == EAGAIN) {
-      continue;
-    } else if (rc == sizeof(event)) {
+    if (read(fd_, &event, sizeof(event)) == sizeof(event)) {
       switch (event.type) {
         case JS_EVENT_BUTTON:
           // printf("Button %u %s\n", event.number, event.value ? "pressed" : "released");
@@ -75,7 +100,7 @@ Joystick::input_thread_func()
             axis1_.store(0);
           }
           break;
-  
+
         case JS_EVENT_AXIS: {
             size_t axis = get_axis_state(&event, axes);
             switch (axis) {
@@ -92,47 +117,15 @@ Joystick::input_thread_func()
             }
             break;
           }
-  
+
         default:
           break;
       }
-	  }
-  }
-}
-
-size_t
-Joystick::get_axis_count()
-{
-  uint8_t num_axes = 0;;
-  if (ioctl(fd_, JSIOCGAXES, &num_axes) == -1) {
-    throw std::runtime_error("Joystick::get_axis_count: ioctl (JSIOCGAXES) failed");
-  }
-  return num_axes;
-}
-
-size_t
-Joystick::get_button_count()
-{
-  uint8_t num_buttons = 0;
-  if (ioctl(fd_, JSIOCGBUTTONS, &num_buttons) == -1) {
-    throw std::runtime_error("Joystick::get_button_count: ioctl (JSIOCGBUTTONS) failed");
-  }
-  return num_buttons;
-}
-
-size_t
-Joystick::get_axis_state(struct ::js_event * event, struct axis_state axes[3])
-{
-  size_t axis = event->number / 2;
-  if (axis < 3) {
-    if (event->number % 2 == 0) {
-      axes[axis].x = event->value;
-    } else {
-      axes[axis].y = event->value;
     }
+
+    loop_rate.sleep();
   }
-  return axis;
 }
 
 }  // namespace util
-}  // namespace minipro
+}  // namespace jaymo

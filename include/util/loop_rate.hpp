@@ -12,31 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef UTIL_LOOP_RATE_HPP_
-#define UTIL_LOOP_RATE_HPP_
+#ifndef UTIL__LOOP_RATE_HPP_
+#define UTIL__LOOP_RATE_HPP_
 
 #include <chrono>
 
 #include "util/units.hpp"
 
-namespace minipro {
+namespace jaymo {
 namespace util {
 
 class LoopRate
 {
 public:
-  LoopRate(units::frequency::hertz_t frequency);
+  explicit LoopRate(units::frequency::hertz_t frequency);
   LoopRate() = delete;
 
   void sleep();
 
-private:
-  std::chrono::steady_clock::time_point t1_;
-  std::chrono::steady_clock::time_point t2_;
+protected:
+  std::chrono::steady_clock::time_point now_;
+  std::chrono::steady_clock::time_point prev_;
 
   std::chrono::milliseconds period_{0};
 };
 
-}}
+}  // namespace util
+}  // namespace jaymo
 
-#endif  // UTIL_LOOP_RATE_HPP_
+#endif  // UTIL__LOOP_RATE_HPP_

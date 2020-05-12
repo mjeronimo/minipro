@@ -17,7 +17,7 @@
 
 #include "util/joystick.hpp"
 
-namespace minipro::util {
+namespace jaymo::util {
 
 class XBox360Controller : public Joystick
 {
@@ -30,6 +30,6 @@ public:
 private:
 };
 
-}  // namespace minipro::util
+}  // namespace jaymo::util
 
 #endif  // UTIL_XBOX360_CONTROLLER_HPP_

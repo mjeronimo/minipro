@@ -12,21 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef UTIL_ANSI_COLORS_HPP_
-#define UTIL_ANSI_COLORS_HPP_
+#ifndef UTIL__ANSI_COLORS_HPP_
+#define UTIL__ANSI_COLORS_HPP_
 
-namespace minipro {
+namespace jaymo {
 namespace util {
 
-#define COLOR_OFF   	"\x1B[0m"
-#define COLOR_RED   	"\x1B[0;91m"
-#define COLOR_GREEN 	"\x1B[0;92m"
+#define COLOR_OFF       "\x1B[0m"
+#define COLOR_RED       "\x1B[0;91m"
+#define COLOR_GREEN     "\x1B[0;92m"
 #define COLOR_YELLOW    "\x1B[0;93m"
-#define COLOR_BLUE  	"\x1B[0;94m"
+#define COLOR_BLUE      "\x1B[0;94m"
 #define COLOR_MAGENTA   "\x1B[0;95m"
 #define COLOR_BOLDGRAY  "\x1B[1;30m"
 #define COLOR_BOLDWHITE "\x1B[1;36m"
 
-}}
+}  // namespace util
+}  // namespace jaymo
 
-#endif  // UTIL_ANSI_COLORS_HPP_
+#endif  // UTIL__ANSI_COLORS_HPP_

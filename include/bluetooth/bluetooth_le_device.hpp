@@ -79,7 +79,7 @@ public:
   static void print_uuid(const bt_uuid_t * uuid);
 };
 
-}
+}  // namespace bluetooth
 
 #endif  // BLUETOOTH_BLUETOOTH_LE_DEVICE_HPP_
 

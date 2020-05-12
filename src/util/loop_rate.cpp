@@ -19,42 +19,42 @@
 #include <exception>
 #include <thread>
 
-namespace minipro
+namespace jaymo
 {
 namespace util
 {
 
 LoopRate::LoopRate(units::frequency::hertz_t hz)
 {
-  std::chrono::milliseconds one_second{1000};
+  const std::chrono::milliseconds one_second{1000};
   auto period_value = one_second.count() / units::unit_cast<int>(hz);
 
   if (std::isinf(period_value) || std::isnan(period_value)) {
-    throw std::runtime_error("LoopRate: invalid frequency specified, resulting in divide-by-zero");
+    throw std::runtime_error("LoopRate: divide-by-zero: invalid frequency specified");
   }
 
   period_ = std::chrono::milliseconds(period_value);
 
-  t1_ = std::chrono::steady_clock::now();
-  t2_ = std::chrono::steady_clock::now();
+  now_ = std::chrono::steady_clock::now();
+  prev_ = std::chrono::steady_clock::now();
 }
 
 void
 LoopRate::sleep()
 {
-  t1_ = std::chrono::steady_clock::now();
-  std::chrono::duration<double, std::milli> work_time = t1_ - t2_;
+  now_ = std::chrono::steady_clock::now();
+  std::chrono::duration<double, std::milli> work_time = now_ - prev_;
 
   if (work_time < period_) {
     std::chrono::duration<double, std::milli> delta_ms(period_ - work_time);
     std::this_thread::sleep_for(delta_ms);
   }
 
-  t2_ = std::chrono::steady_clock::now();
-  std::chrono::duration<double, std::milli> sleep_time = t2_ - t1_;
+  prev_ = std::chrono::steady_clock::now();
 
+  //std::chrono::duration<double, std::milli> sleep_time = prev_ - now_;
   // printf("Time: %f \n", (work_time + sleep_time).count());
 }
 
 }  // namespace util
-}  // namespace minipro
+}  // namespace jaymo

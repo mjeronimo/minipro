@@ -16,6 +16,8 @@
 
 #include <string>
 
+namespace jaymo
+{
 namespace minipro
 {
 
@@ -110,3 +112,4 @@ MiniPro::drive(int16_t speed, int16_t angle)
 }
 
 }  // namespace minipro
+}  // namespace jaymo

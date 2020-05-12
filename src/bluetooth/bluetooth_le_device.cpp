@@ -201,8 +201,8 @@ client_create(int fd, uint16_t mtu, bool verbose)
       reinterpret_cast<void *>(const_cast<char *>("gatt: ")), nullptr);
   }
 
-  //bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, cli, nullptr);
-  //bt_gatt_client_set_service_changed(cli->gatt, service_changed_cb, cli, nullptr);
+  // bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, cli, nullptr);
+  // bt_gatt_client_set_service_changed(cli->gatt, service_changed_cb, cli, nullptr);
 
   // bt_gatt_client already holds a reference
   gatt_db_unref(cli->db);
@@ -330,7 +330,7 @@ print_service(struct gatt_db_attribute * attr, void * user_data)
 void
 BluetoothLEDevice::ready_cb(bool success, uint8_t att_ecode, void * user_data)
 {
-  //struct client * cli = (struct client *) user_data;
+  // struct client * cli = (struct client *) user_data;
   BluetoothLEDevice * This = (BluetoothLEDevice *) user_data;
 
   if (!success) {
@@ -340,7 +340,7 @@ BluetoothLEDevice::ready_cb(bool success, uint8_t att_ecode, void * user_data)
 
   {
     std::lock_guard<std::mutex> lk(This->mutex_);
-	This->ready_ = true;
+    This->ready_ = true;
   }
 
   This->cv_.notify_all();

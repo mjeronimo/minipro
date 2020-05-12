@@ -14,8 +14,8 @@
 
 #include "util/xbox360_controller.hpp"
 
-namespace minipro::util
+namespace jaymo::util
 {
 
 
-}  // namespace minipro::util
+}  // namespace jaymo::util

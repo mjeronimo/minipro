@@ -34,12 +34,12 @@ int main(int, char **)
   try {
     signal(SIGINT, signal_handler);
 
-    minipro::MiniPro minipro("F4:02:07:C6:C7:B4");
+    jaymo::minipro::MiniPro minipro("F4:02:07:C6:C7:B4");
     minipro.enable_notifications();
     minipro.enter_remote_control_mode();
 
-    minipro::util::Joystick joystick;
-    minipro::util::LoopRate loop_rate(30_Hz);
+    jaymo::util::Joystick joystick;
+    jaymo::util::LoopRate loop_rate(30_Hz);
 
     while (!should_exit) {
       // Flip the axis values so that forward and right are positive values
@@ -56,18 +56,16 @@ int main(int, char **)
 
       // Keep the MiniPRO fed with drive commands, throttling to achieve a
       // consistent rate. I need to empirically determine the minimum rate
-      // (currently using 40Hz)
       minipro.drive(speed, angle);
       loop_rate.sleep();
     }
 
-    // When existing, make sure to stop the miniPRO and return to normal mode
+    // When exiting, make sure to stop the miniPRO and return to normal mode
     minipro.drive(0, 0);
     minipro.exit_remote_control_mode();
     minipro.disable_notifications();
-
   } catch (std::exception & ex) {
-    std::cerr << "minipro: exception: " << ex.what() << std::endl;
+    std::cerr << "minipro: t exception: " << ex.what() << std::endl;
     return -1;
   }
 
