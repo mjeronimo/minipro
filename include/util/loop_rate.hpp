@@ -19,7 +19,7 @@
 
 #include "util/units.hpp"
 
-namespace jaymo {
+namespace jeronibot {
 namespace util {
 
 class LoopRate
@@ -38,6 +38,6 @@ protected:
 };
 
 }  // namespace util
-}  // namespace jaymo
+}  // namespace jeronibot
 
 #endif  // UTIL__LOOP_RATE_HPP_

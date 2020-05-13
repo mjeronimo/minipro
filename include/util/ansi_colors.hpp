@@ -15,7 +15,7 @@
 #ifndef UTIL__ANSI_COLORS_HPP_
 #define UTIL__ANSI_COLORS_HPP_
 
-namespace jaymo {
+namespace jeronibot {
 namespace util {
 
 #define COLOR_OFF       "\x1B[0m"
@@ -28,6 +28,6 @@ namespace util {
 #define COLOR_BOLDWHITE "\x1B[1;36m"
 
 }  // namespace util
-}  // namespace jaymo
+}  // namespace jeronibot
 
 #endif  // UTIL__ANSI_COLORS_HPP_

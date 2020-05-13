@@ -14,8 +14,22 @@
 
 #include "util/xbox360_controller.hpp"
 
-namespace jaymo::util
+#include <string>
+
+namespace jeronibot
+{
+namespace util
 {
 
+XBox360Controller::XBox360Controller(const std::string & device_name)
+ : Joystick(device_name)
+{
+}
 
-}  // namespace jaymo::util
+XBox360Controller::XBox360Controller()
+ : XBox360Controller("/dev/input/js0")
+{
+}
+
+}  // namespace util
+}  // namespace jeronibot

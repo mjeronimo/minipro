@@ -37,8 +37,20 @@ add_executable(minipro ${BLUEZ_SRC}
   src/minipro/minipro.cpp
   src/bluetooth/bluetooth_le_device.cpp
   src/bluetooth/utils.cpp
+  src/util/xbox360_controller.cpp
   src/util/joystick.cpp
   src/util/loop_rate.cpp
 )
 target_link_libraries(minipro bluez ${GLIB_LDFLAGS} pthread)
 target_include_directories(minipro PUBLIC lib/bluez src/util)
+
+
+
+
+add_executable(test_joystick ${BLUEZ_SRC} 
+  test/joystick/main.cpp
+  src/util/xbox360_controller.cpp
+  src/util/joystick.cpp
+  src/util/loop_rate.cpp
+)
+target_link_libraries(test_joystick pthread)

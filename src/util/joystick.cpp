@@ -27,7 +27,7 @@
 
 #include "util/loop_rate.hpp"
 
-namespace jaymo
+namespace jeronibot
 {
 namespace util
 {
@@ -46,10 +46,19 @@ Joystick::Joystick(const std::string & device_name)
     throw std::runtime_error("Joystick: ioctl (JSIOCGBUTTONS) failed");
   }
 
+  for (int i=0; i<num_axes_; i++) {
+    axis_map_[i].x = 0;
+    axis_map_[i].y = 0;
+  }
+
+  for (int i=0; i<num_buttons_; i++) {
+    button_map_[i] = nullptr;
+  }
+
   // Set the handle to non-blocking so that the input thread
   // can break out of its read loop when shutting down
-  int flags = fcntl(fd_, F_GETFL, 0);
-  fcntl(fd_, F_SETFL, flags | O_NONBLOCK);
+  int current_flags = fcntl(fd_, F_GETFL, 0);
+  fcntl(fd_, F_SETFL, current_flags | O_NONBLOCK);
 
   // Launch a separate thread to handle the joystick input
   input_thread_ = std::make_unique<std::thread>(std::bind(&Joystick::input_thread_func, this));
@@ -62,61 +71,59 @@ Joystick::Joystick()
 
 Joystick::~Joystick()
 {
-  printf("~Joystick\n");
   should_exit_.store(true);
   input_thread_->join();
   close(fd_);
 }
 
-size_t
-Joystick::get_axis_state(struct ::js_event * event, AxisState axes[3])
+AxisState
+Joystick::get_axis_state(uint8_t axis)
 {
-  size_t axis = event->number / 2;
-  if (axis < 3) {
-    if (event->number % 2 == 0) {
-      axes[axis].x = event->value;
-    } else {
-      axes[axis].y = event->value;
-    }
+  if (axis >= num_axes_) {
+    throw std::runtime_error("Joystick: get_axis_state: axis value out of range");
   }
-  return axis;
+
+  return { axis_map_[axis].x, axis_map_[axis].y }; 
+}
+
+void
+Joystick::set_button_callback(uint8_t button, std::function<void(bool)> callback)
+{
+  if (button >= num_buttons_) {
+    throw std::runtime_error("Joystick: set_button_callback: button value out of range");
+  }
+
+  button_map_[button] = callback;
 }
 
 void
 Joystick::input_thread_func()
 {
   struct ::js_event event;
-  AxisState axes[3] = {0};
-
-  jaymo::util::LoopRate loop_rate(30_Hz);
+  jeronibot::util::LoopRate loop_rate(60_Hz);
 
   while (!should_exit_) {
     if (read(fd_, &event, sizeof(event)) == sizeof(event)) {
       switch (event.type) {
         case JS_EVENT_BUTTON:
           // printf("Button %u %s\n", event.number, event.value ? "pressed" : "released");
-          if (event.number == 1) {
-            axis0_.store(0);
-            axis1_.store(0);
+          if (button_map_[event.number] != nullptr) {
+            button_map_[event.number](event.value? true: false);
           }
           break;
 
         case JS_EVENT_AXIS: {
-            size_t axis = get_axis_state(&event, axes);
-            switch (axis) {
-              case 0:
-                axis0_.store(axes[axis].y);
-                break;
+          // Each axis has two event numbers (for x and y)
+          size_t axis = event.number / 2;
 
-              case 1:
-                axis1_.store(axes[axis].x);
-                break;
-
-              default:
-                break;
-            }
-            break;
+          // The first event number is x and the second is y
+          if (event.number % 2 == 0) {
+            axis_map_[axis].x = event.value;
+          } else {
+            axis_map_[axis].y = event.value;
           }
+          break;
+        }
 
         default:
           break;
@@ -128,4 +135,4 @@ Joystick::input_thread_func()
 }
 
 }  // namespace util
-}  // namespace jaymo
+}  // namespace jeronibot

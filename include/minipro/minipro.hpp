@@ -21,7 +21,7 @@
 #include "bluetooth/bluetooth_le_device.hpp"
 #include "util/units.hpp"
 
-namespace jaymo
+namespace jeronibot
 {
 namespace minipro
 {
@@ -48,6 +48,6 @@ public:
 };
 
 }  // namespace minipro
-}  // namespace jaymo
+}  // namespace jeronibot
 
 #endif  // MINIPRO__MINIPRO_HPP_

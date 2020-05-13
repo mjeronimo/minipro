@@ -15,9 +15,14 @@
 #ifndef UTIL_XBOX360_CONTROLLER_HPP_
 #define UTIL_XBOX360_CONTROLLER_HPP_
 
+#include <functional>
+
 #include "util/joystick.hpp"
 
-namespace jaymo::util {
+namespace jeronibot
+{
+namespace util
+{
 
 class XBox360Controller : public Joystick
 {
@@ -25,11 +30,25 @@ public:
   XBox360Controller(const std::string & device_name);
   XBox360Controller();
 
-  ~XBox360Controller();
+  static const uint8_t Button_A = 0;
+  static const uint8_t Button_B = 1;
+  static const uint8_t Button_X = 2;
+  static const uint8_t Button_Y = 3;
+  static const uint8_t Button_LeftShoulder = 4;
+  static const uint8_t Button_RightShoulder = 5;
+  static const uint8_t Button_Back = 6;
+  static const uint8_t Button_Start = 7;
+  static const uint8_t Button_XBox = 8;
+  static const uint8_t Button_LeftThumbstick = 9;
+  static const uint8_t Button_RightThumbstick = 10;
 
-private:
+  static const uint8_t Axis_LeftThumbstick = 0;
+  static const uint8_t Axis_RightThumbstick = 1;
+  static const uint8_t Axis_Triggers = 2;
+  static const uint8_t Axis_Digipad = 3;
 };
 
-}  // namespace jaymo::util
+}  // namespace util
+}  // namespace jeronibot
 
 #endif  // UTIL_XBOX360_CONTROLLER_HPP_

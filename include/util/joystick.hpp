@@ -19,27 +19,33 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <thread>
 
-namespace jaymo {
+namespace jeronibot {
 namespace util {
+
+typedef struct AxisState {
+  short x; 
+  short y; 
+} AxisState;
 
 class Joystick
 {
 public:
   explicit Joystick(const std::string & device_name);
   Joystick();
+
   ~Joystick();
 
-  typedef struct AxisState { short x; short y; } AxisState;
+  uint8_t get_num_axes() { return num_axes_; };
+  uint8_t get_num_buttons() { return num_buttons_; };
 
-  size_t get_num_axes() { return num_axes_; };
-  size_t get_num_buttons() { return num_buttons_; };
-
-  short get_axis_0() { return axis0_.load(); }
-  short get_axis_1() { return axis1_.load(); }
+  AxisState get_axis_state(uint8_t axis);
+  void set_button_callback(uint8_t button, std::function<void(bool)> callback);
 
 protected:
   int fd_{-1};
@@ -47,18 +53,17 @@ protected:
   uint8_t num_axes_{0};
   uint8_t num_buttons_{0};
 
-  size_t get_axis_state(struct ::js_event *event, AxisState axes[3]);
+  struct XY { std::atomic<short> x; std::atomic<short> y; };
+  std::map<uint8_t, struct XY> axis_map_;
+
+  std::map<uint8_t, std::function<void(int)>> button_map_;
 
   void input_thread_func();
-  std::unique_ptr<std::thread> input_thread_;
-
-  std::atomic<short> axis0_{0};
-  std::atomic<short> axis1_{0};
-
   std::atomic<bool> should_exit_{false};
+  std::unique_ptr<std::thread> input_thread_;
 };
 
 }  // namespace util
-}  // namespace jaymo
+}  // namespace jeronibot
 
 #endif  // UTIL__JOYSTICK_HPP_

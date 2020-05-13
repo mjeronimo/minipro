@@ -16,7 +16,7 @@
 
 #include <string>
 
-namespace jaymo
+namespace jeronibot
 {
 namespace minipro
 {
@@ -112,4 +112,4 @@ MiniPro::drive(int16_t speed, int16_t angle)
 }
 
 }  // namespace minipro
-}  // namespace jaymo
+}  // namespace jeronibot

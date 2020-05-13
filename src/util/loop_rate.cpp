@@ -19,7 +19,7 @@
 #include <exception>
 #include <thread>
 
-namespace jaymo
+namespace jeronibot
 {
 namespace util
 {
@@ -52,9 +52,9 @@ LoopRate::sleep()
 
   prev_ = std::chrono::steady_clock::now();
 
-  //std::chrono::duration<double, std::milli> sleep_time = prev_ - now_;
+  // std::chrono::duration<double, std::milli> sleep_time = prev_ - now_;
   // printf("Time: %f \n", (work_time + sleep_time).count());
 }
 
 }  // namespace util
-}  // namespace jaymo
+}  // namespace jeronibot

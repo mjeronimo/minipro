@@ -17,10 +17,13 @@
 #include <iostream>
 
 #include "minipro/minipro.hpp"
-#include "util/joystick.hpp"
+#include "util/xbox360_controller.hpp"
 #include "util/loop_rate.hpp"
 
 using namespace units::frequency;
+
+using jeronibot::util::XBox360Controller;
+using jeronibot::util::LoopRate;
 
 static std::atomic<bool> should_exit{false};
 
@@ -34,18 +37,18 @@ int main(int, char **)
   try {
     signal(SIGINT, signal_handler);
 
-    jaymo::minipro::MiniPro minipro("F4:02:07:C6:C7:B4");
+    jeronibot::minipro::MiniPro minipro("F4:02:07:C6:C7:B4");
     minipro.enable_notifications();
     minipro.enter_remote_control_mode();
 
-    jaymo::util::Joystick joystick;
-    jaymo::util::LoopRate loop_rate(30_Hz);
+    XBox360Controller joystick;
+    LoopRate loop_rate(30_Hz);
 
     while (!should_exit) {
       // Flip the axis values so that forward and right are positive values
       // so that the direction of the MiniPRO matches the joysticks
-      auto speed = -joystick.get_axis_0();
-      auto angle = -joystick.get_axis_1();
+      auto speed = -joystick.get_axis_state(XBox360Controller::Axis_LeftThumbstick).y;
+      auto angle = -joystick.get_axis_state(XBox360Controller::Axis_RightThumbstick).x;
 
       // Set values to zero if below a specified threshold so that the MiniPRO
       // is stable when the joysticks are released (and wouldn't otherwise go
