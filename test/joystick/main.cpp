@@ -14,14 +14,14 @@
 
 #include <csignal>
 #include <iostream>
+#include <stdexcept>
 
 #include "util/xbox360_controller.hpp"
 #include "util/loop_rate.hpp"
 
-using namespace units::frequency;
-
 using jeronibot::util::XBox360Controller;
 using jeronibot::util::LoopRate;
+using units::frequency::hertz;
 
 static std::atomic<bool> should_exit{false};
 
@@ -32,29 +32,34 @@ void signal_handler(int signum)
 
 int main(int, char **)
 {
-  signal(SIGINT, signal_handler);
+  try {
+    signal(SIGINT, signal_handler);
 
-  XBox360Controller controller;
-  LoopRate loop_rate(30_Hz);
+    XBox360Controller controller;
+    LoopRate loop_rate(30_Hz);
 
-  controller.set_button_callback(
-    XBox360Controller::Button_X,
-    [](bool pressed) {std::cout << "Button X: " << pressed << std::endl;});
+    controller.set_button_callback(
+      XBox360Controller::Button_X,
+      [](bool pressed) {std::cout << "Button X: " << pressed << std::endl;});
 
-  controller.set_button_callback(
-    XBox360Controller::Button_B,
-    [](bool pressed) {std::cout << "Button B: " << pressed << std::endl;});
+    controller.set_button_callback(
+      XBox360Controller::Button_B,
+      [](bool pressed) {std::cout << "Button B: " << pressed << std::endl;});
 
-  while (!should_exit) {
-    for (int i = 0; i < controller.get_num_axes(); i++) {
-      auto x = controller.get_axis_state(i).x;
-      auto y = controller.get_axis_state(i).y;
+    while (!should_exit) {
+      for (int i = 0; i < controller.get_num_axes(); i++) {
+        auto x = controller.get_axis_state(i).x;
+        auto y = controller.get_axis_state(i).y;
 
-      std::cout << "x_" << i << ",y_" << i << ": " << x << "," << y << "\n";
-    }
+        std::cout << "x_" << i << ",y_" << i << ": " << x << "," << y << "\n";
+      }
 
-    std::cout << std::endl;
-    loop_rate.sleep();
+      std::cout << std::endl;
+      loop_rate.sleep();
+    } 
+  } catch (std::exception & ex) {
+    std::cerr << "Exception: " << ex.what() << std::endl;
+    return -1;
   }
 
   return 0;

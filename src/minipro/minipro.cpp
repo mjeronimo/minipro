@@ -21,37 +21,37 @@ namespace jeronibot
 namespace minipro
 {
 
-MiniPro::MiniPro(const std::string & minipro_addr)
-: BluetoothLEDevice(minipro_addr)
+MiniPro::MiniPro(const std::string & bt_addr)
+: BluetoothLEDevice(bt_addr)
 {
 }
 
-int
+units::velocity::miles_per_hour_t
 MiniPro::get_current_speed()
 {
   // TODO(mjeronimo):
-  return 0;
+  return 0_mph;
 }
 
-int
+units::current::ampere_t
 MiniPro::get_battery_level()
 {
   // TODO(mjeronimo):
-  return 0;
+  return 0_A;
 }
 
-int
+units::voltage::volt_t
 MiniPro::get_voltage()
 {
   // TODO(mjeronimo):
-  return 0;
+  return 0_V;
 }
 
-int
+units::temperature::fahrenheit_t
 MiniPro::get_vehicle_temperature()
 {
   // TODO(mjeronimo):
-  return 0;
+  return 0_degF;
 }
 
 void
@@ -85,14 +85,14 @@ MiniPro::exit_remote_control_mode()
 }
 
 void
-MiniPro::drive(int16_t speed, int16_t angle)
+MiniPro::drive(int16_t throttle, int16_t steering)
 {
   uint16_t sum = 0x06 + 0xa + 0x03 + 0x7b;
 
-  unsigned char * p_a0 = (unsigned char *) &speed;
+  unsigned char * p_a0 = (unsigned char *) &throttle;
   sum += p_a0[0] + p_a0[1];
 
-  unsigned char * p_a1 = (unsigned char *) &angle;
+  unsigned char * p_a1 = (unsigned char *) &steering;
   sum += p_a1[0] + p_a1[1];
 
   uint16_t checksum = sum ^ 0xffff;

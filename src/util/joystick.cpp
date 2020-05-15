@@ -15,8 +15,8 @@
 #include "util/joystick.hpp"
 
 #include <fcntl.h>
-#include <unistd.h>
 #include <linux/joystick.h>
+#include <unistd.h>
 
 #include <atomic>
 #include <cstdint>
@@ -46,12 +46,12 @@ Joystick::Joystick(const std::string & device_name)
     throw std::runtime_error("Joystick: ioctl (JSIOCGBUTTONS) failed");
   }
 
-  for (int i=0; i<num_axes_; i++) {
+  for (int i = 0; i < num_axes_; i++) {
     axis_map_[i].x = 0;
     axis_map_[i].y = 0;
   }
 
-  for (int i=0; i<num_buttons_; i++) {
+  for (int i = 0; i < num_buttons_; i++) {
     button_map_[i] = nullptr;
   }
 
@@ -83,7 +83,7 @@ Joystick::get_axis_state(uint8_t axis)
     throw std::runtime_error("Joystick: get_axis_state: axis value out of range");
   }
 
-  return { axis_map_[axis].x, axis_map_[axis].y }; 
+  return {axis_map_[axis].x, axis_map_[axis].y};
 }
 
 void
@@ -108,22 +108,23 @@ Joystick::input_thread_func()
         case JS_EVENT_BUTTON:
           // printf("Button %u %s\n", event.number, event.value ? "pressed" : "released");
           if (button_map_[event.number] != nullptr) {
-            button_map_[event.number](event.value? true: false);
+            button_map_[event.number](event.value ? true : false);
           }
           break;
 
-        case JS_EVENT_AXIS: {
-          // Each axis has two event numbers (for x and y)
-          size_t axis = event.number / 2;
+        case JS_EVENT_AXIS:
+          {
+            // Each axis has two event numbers (for x and y)
+            size_t axis = event.number / 2;
 
-          // The first event number is x and the second is y
-          if (event.number % 2 == 0) {
-            axis_map_[axis].x = event.value;
-          } else {
-            axis_map_[axis].y = event.value;
+            // The first event number is x and the second is y
+            if (event.number % 2 == 0) {
+              axis_map_[axis].x = event.value;
+            } else {
+              axis_map_[axis].y = event.value;
+            }
           }
           break;
-        }
 
         default:
           break;

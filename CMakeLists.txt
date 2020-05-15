@@ -28,29 +28,41 @@ add_library(bluez STATIC
   lib/bluez/uuid.c
 )
 
+#add_library(minipro STATIC
+#  src/minipro/minipro.cpp
+#)
+
+#add_library(bluetooth STATIC
+#  src/bluetooth/bluetooth_le_device.cpp
+#  src/bluetooth/utils.cpp
+#)
+
+#add_library(util STATIC
+#  src/util/xbox360_controller.cpp
+#  src/util/joystick.cpp
+#  src/util/loop_rate.cpp
+#)
+
 add_executable(gattclient ${BLUEZ_SRC} lib/bluez/btgattclient.c)
 target_link_libraries(gattclient bluez ${GLIB_LDFLAGS})
 target_include_directories(gattclient PUBLIC lib/bluez)
 
-add_executable(minipro ${BLUEZ_SRC}
-  src/minipro/main.cpp 
+add_executable(t_minipro ${BLUEZ_SRC}
   src/minipro/minipro.cpp
   src/bluetooth/bluetooth_le_device.cpp
   src/bluetooth/utils.cpp
   src/util/xbox360_controller.cpp
   src/util/joystick.cpp
   src/util/loop_rate.cpp
+  test/minipro/main.cpp 
 )
-target_link_libraries(minipro bluez ${GLIB_LDFLAGS} pthread)
-target_include_directories(minipro PUBLIC lib/bluez src/util)
+target_link_libraries(t_minipro bluez ${GLIB_LDFLAGS} pthread)
+target_include_directories(t_minipro PUBLIC lib/bluez src/util)
 
-
-
-
-add_executable(test_joystick ${BLUEZ_SRC} 
-  test/joystick/main.cpp
+add_executable(t_joystick
   src/util/xbox360_controller.cpp
   src/util/joystick.cpp
   src/util/loop_rate.cpp
+  test/joystick/main.cpp
 )
-target_link_libraries(test_joystick pthread)
+target_link_libraries(t_joystick pthread)

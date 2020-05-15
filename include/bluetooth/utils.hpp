@@ -22,7 +22,7 @@ namespace bluetooth {
 class utils
 {
 public:
-  static const char * ecode_to_string(uint8_t ecode);
+  static const char * to_string(uint8_t ecode);
 };
 
 }

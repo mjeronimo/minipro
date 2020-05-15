@@ -37,12 +37,6 @@ using namespace std::chrono_literals;
 namespace bluetooth
 {
 
-static int l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, bool verbose);
-static struct client * client_create(int fd, uint16_t mtu, bool verbose);
-static void client_destroy(struct client * cli);
-static void ready_cb(bool success, uint8_t att_ecode, void * user_data);
-static void service_changed_cb(uint16_t start_handle, uint16_t end_handle, void * user_data);
-
 BluetoothLEDevice::BluetoothLEDevice(
   const std::string & device_address, uint8_t dst_type, int sec,
   uint16_t mtu)
@@ -76,7 +70,7 @@ BluetoothLEDevice::BluetoothLEDevice(
 
   // Wait for client to be ready
   std::unique_lock<std::mutex> lk(mutex_);
-  if (cv_.wait_for(lk, 5s, [this]{ return ready_; })) {
+  if (cv_.wait_for(lk, 5s, [this] {return ready_;})) {
     printf("BluetoothLEDevice: Initialized OK\n");
   } else {
     throw std::runtime_error("BluetoothLEDevice: Did NOT initialize OK");
@@ -112,20 +106,20 @@ BluetoothLEDevice::att_debug_cb(const char * str, void * user_data)
 
 // Print a prefix (user_data) followed by a message (str)
 // Example gatt: MTU exchange complete, with MTU: 23 (gatt: is the prefix)
-static void
-gatt_debug_cb(const char * str, void * user_data)
+void
+BluetoothLEDevice::gatt_debug_cb(const char * str, void * user_data)
 {
   const char * prefix = (const char *) user_data;
   printf(COLOR_GREEN "%s%s\n" COLOR_OFF, prefix, str);
 }
 
-static void
-service_added_cb(struct gatt_db_attribute * attr, void * user_data)
+void
+BluetoothLEDevice::service_added_cb(struct gatt_db_attribute * attr, void * user_data)
 {
 }
 
-static void
-service_removed_cb(struct gatt_db_attribute * attr, void * user_data)
+void
+BluetoothLEDevice::service_removed_cb(struct gatt_db_attribute * attr, void * user_data)
 {
 }
 
@@ -137,8 +131,8 @@ service_removed_cb(struct gatt_db_attribute * attr, void * user_data)
  * @param mtu  selected pdu size
  * @return gatt client structure
  */
-static struct client *
-client_create(int fd, uint16_t mtu, bool verbose)
+struct client *
+BluetoothLEDevice::client_create(int fd, uint16_t mtu, bool verbose)
 {
   struct client * cli = new0(struct client, 1);
 
@@ -210,8 +204,8 @@ client_create(int fd, uint16_t mtu, bool verbose)
   return cli;
 }
 
-static void
-client_destroy(struct client * cli)
+void
+BluetoothLEDevice::client_destroy(struct client * cli)
 {
   bt_gatt_client_unref(cli->gatt);
   bt_att_unref(cli->att);
@@ -230,14 +224,8 @@ BluetoothLEDevice::print_uuid(const bt_uuid_t * uuid)
   printf("%s\n", uuid_str);
 }
 
-/**
- * print included data
- *
- * @param attr      gatt_db_attribute to print
- * @param user_data    client structure pointer
- */
-static void
-print_included_data(struct gatt_db_attribute * attr, void * user_data)
+void
+BluetoothLEDevice::print_included_data(struct gatt_db_attribute * attr, void * user_data)
 {
   struct client * cli = (struct client *) user_data;
   uint16_t handle, start, end;
@@ -262,8 +250,8 @@ print_included_data(struct gatt_db_attribute * attr, void * user_data)
   BluetoothLEDevice::print_uuid(&uuid);
 }
 
-static void
-print_descriptor(struct gatt_db_attribute * attr, void * user_data)
+void
+BluetoothLEDevice::print_descriptor(struct gatt_db_attribute * attr, void * user_data)
 {
   printf(
     "\t\t  " COLOR_MAGENTA "descr" COLOR_OFF " - handle: 0x%04x, uuid: ",
@@ -271,17 +259,15 @@ print_descriptor(struct gatt_db_attribute * attr, void * user_data)
   BluetoothLEDevice::print_uuid(gatt_db_attribute_get_type(attr));
 }
 
-static void
-print_characteristic(struct gatt_db_attribute * attr, void * user_data)
+void
+BluetoothLEDevice::print_characteristic(struct gatt_db_attribute * attr, void * user_data)
 {
   uint16_t handle;
   uint16_t value_handle;
   uint8_t properties;
   bt_uuid_t uuid;
 
-  if (!gatt_db_attribute_get_char_data(
-      attr, &handle,
-      &value_handle, &properties, &uuid))
+  if (!gatt_db_attribute_get_char_data(attr, &handle, &value_handle, &properties, &uuid))
   {
     return;
   }
@@ -296,8 +282,8 @@ print_characteristic(struct gatt_db_attribute * attr, void * user_data)
   gatt_db_service_foreach_desc(attr, print_descriptor, nullptr);
 }
 
-static void
-print_service(struct gatt_db_attribute * attr, void * user_data)
+void
+BluetoothLEDevice::print_service(struct gatt_db_attribute * attr, void * user_data)
 {
   struct client * cli = (struct client *) user_data;
   uint16_t start, end;
@@ -320,13 +306,6 @@ print_service(struct gatt_db_attribute * attr, void * user_data)
   printf("\n");
 }
 
-/**
- * GATT discovery procedures call back
- *
- * @param success    if not 0 an error occured
- * @param att_ecode    att error code
- * @param user_data    pointer to client structure
- */
 void
 BluetoothLEDevice::ready_cb(bool success, uint8_t att_ecode, void * user_data)
 {
@@ -347,15 +326,8 @@ BluetoothLEDevice::ready_cb(bool success, uint8_t att_ecode, void * user_data)
   This->ready_ = true;
 }
 
-/**
- * service changed call back
- *
- * @param start_handle
- * @param end_handle
- * @param user_data    client pointer
- */
-static void
-service_changed_cb(uint16_t start_handle, uint16_t end_handle, void * user_data)
+void
+BluetoothLEDevice::service_changed_cb(uint16_t start_handle, uint16_t end_handle, void * user_data)
 {
   struct client * cli = (struct client *) user_data;
   printf("\nService Changed handled - start: 0x%04x end: 0x%04x\n", start_handle, end_handle);
@@ -371,8 +343,8 @@ service_changed_cb(uint16_t start_handle, uint16_t end_handle, void * user_data)
  * @param argc      argument counter (and actual count)
  * @return        true = success false = error
  */
-static bool
-parse_args(char * str, int expected_argc, char ** argv, int * argc)
+bool
+BluetoothLEDevice::parse_args(char * str, int expected_argc, char ** argv, int * argc)
 {
   for (char ** ap = argv; (*ap = strsep(&str, " \t")) != nullptr; ) {
     if (**ap == '\0') {
@@ -399,8 +371,8 @@ parse_args(char * str, int expected_argc, char ** argv, int * argc)
  * @param length    number of values
  * @param user_data    not used
  */
-static void
-read_multiple_cb(
+void
+BluetoothLEDevice::read_multiple_cb(
   bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length,
   void * user_data)
 {
@@ -465,13 +437,13 @@ BluetoothLEDevice::read_multiple(char * cmd_str)
  * @param length    size of vector
  * @param user_data    not used
  */
-static void
-read_cb(bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length, void * /*user_data*/)
+void
+BluetoothLEDevice::read_cb(bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length, void * /*user_data*/)
 {
   if (!success) {
     printf(
       "\nRead request failed: %s (0x%02x)\n",
-      bluetooth::utils::ecode_to_string(att_ecode), att_ecode);
+      bluetooth::utils::to_string(att_ecode), att_ecode);
     return;
   }
 
@@ -531,12 +503,12 @@ static struct option write_value_options[] = {
  * @param user_data    not used
  */
 
-static void
-write_cb(bool success, uint8_t att_ecode, void * user_data)
+void
+BluetoothLEDevice::write_cb(bool success, uint8_t att_ecode, void * user_data)
 {
   if (!success) {
     printf(
-      "\nWrite failed: %s (0x%02x)\n", bluetooth::utils::ecode_to_string(att_ecode),
+      "\nWrite failed: %s (0x%02x)\n", bluetooth::utils::to_string(att_ecode),
       att_ecode);
   }
 }
@@ -555,8 +527,8 @@ static struct option write_long_value_options[] = {
  * @param att_ecode      att error code
  * @param user_data      not used
  */
-static void
-write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * user_data)
+void
+BluetoothLEDevice::write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * user_data)
 {
   if (success) {
     // printf("Write successful\n");
@@ -564,7 +536,7 @@ write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * user_
     printf("Reliable write not verified\n");
   } else {
     printf(
-      "\nWrite failed: %s (0x%02x)\n", bluetooth::utils::ecode_to_string(att_ecode),
+      "\nWrite failed: %s (0x%02x)\n", bluetooth::utils::to_string(att_ecode),
       att_ecode);
   }
 }
@@ -582,10 +554,7 @@ BluetoothLEDevice::write_long_value(char * cmd_str)
   char * argvbuf[516];
   char ** argv = argvbuf;
   int argc = 1;
-  uint16_t handle;
-  uint16_t offset;
   char * endptr = nullptr;
-  int length;
   uint8_t * value = nullptr;
   bool reliable_writes = false;
 
@@ -621,21 +590,20 @@ BluetoothLEDevice::write_long_value(char * cmd_str)
     return;
   }
 
-  handle = strtol(argv[0], &endptr, 0);
+  uint16_t handle = strtol(argv[0], &endptr, 0);
   if (!endptr || *endptr != '\0' || !handle) {
     printf("Invalid handle: %s\n", argv[0]);
     return;
   }
 
   endptr = nullptr;
-  offset = strtol(argv[1], &endptr, 0);
+  uint16_t offset = strtol(argv[1], &endptr, 0);
   if (!endptr || *endptr != '\0' || errno == ERANGE) {
     printf("Invalid offset: %s\n", argv[1]);
     return;
   }
 
-  length = argc - 2;
-
+  int length = argc - 2;
   if (length > 0) {
     if (length > UINT16_MAX) {
       printf("Write value too long\n");
@@ -701,10 +669,7 @@ BluetoothLEDevice::write_prepare(char * cmd_str)
   char ** argv = argvbuf;
   int argc = 0;
   unsigned int id = 0;
-  uint16_t handle;
-  uint16_t offset;
   char * endptr = nullptr;
-  unsigned int length;
   uint8_t * value = nullptr;
 
   if (!bt_gatt_client_is_ready(cli->gatt)) {
@@ -754,14 +719,14 @@ BluetoothLEDevice::write_prepare(char * cmd_str)
     return;
   }
 
-  handle = strtol(argv[0], &endptr, 0);
+  uint16_t handle = strtol(argv[0], &endptr, 0);
   if (!endptr || *endptr != '\0' || !handle) {
     printf("Invalid handle: %s\n", argv[0]);
     return;
   }
 
   endptr = nullptr;
-  offset = strtol(argv[1], &endptr, 0);
+  uint16_t offset = strtol(argv[1], &endptr, 0);
   if (!endptr || *endptr != '\0' || errno == ERANGE) {
     printf("Invalid offset: %s\n", argv[1]);
     return;
@@ -771,7 +736,7 @@ BluetoothLEDevice::write_prepare(char * cmd_str)
    * First two arguments are handle and offset. What remains is the value
    * length
    */
-  length = argc - 2;
+  unsigned int length = argc - 2;
 
   if (length == 0) {
     goto done;
@@ -837,8 +802,6 @@ BluetoothLEDevice::write_execute(char * cmd_str)
   char ** argv = argvbuf;
   int argc = 0;
   char * endptr = nullptr;
-  unsigned int session_id;
-  bool execute;
 
   if (!bt_gatt_client_is_ready(cli->gatt)) {
     printf("GATT client not initialized\n");
@@ -854,7 +817,7 @@ BluetoothLEDevice::write_execute(char * cmd_str)
     return;
   }
 
-  session_id = strtol(argv[0], &endptr, 0);
+  unsigned int session_id = strtol(argv[0], &endptr, 0);
   if (!endptr || *endptr != '\0') {
     printf("Invalid session id: %s\n", argv[0]);
     return;
@@ -867,7 +830,7 @@ BluetoothLEDevice::write_execute(char * cmd_str)
     return;
   }
 
-  execute = !!strtol(argv[1], &endptr, 0);
+  bool execute = !!strtol(argv[1], &endptr, 0);
   if (!endptr || *endptr != '\0') {
     printf("Invalid execute: %s\n", argv[1]);
     return;
@@ -892,7 +855,8 @@ BluetoothLEDevice::write_execute(char * cmd_str)
  * @param length    length of vector value
  * @param user_data    not used
  */
-static void notify_cb(
+void
+BluetoothLEDevice::notify_cb(
   uint16_t value_handle, const uint8_t * value,
   uint16_t length, void * user_data)
 {
@@ -912,13 +876,8 @@ static void notify_cb(
   printf("\n");
 }
 
-/**
- *  register notify call back
- *
- * @param att_ecode    att error code
- * @param user_data    not used
- */
-static void register_notify_cb(uint16_t att_ecode, void * /*user_data*/)
+void
+BluetoothLEDevice::register_notify_cb(uint16_t att_ecode, void * /*user_data*/)
 {
   if (att_ecode) {
     printf("Failed to register notify handler - error code: 0x%02x\n", att_ecode);
@@ -958,50 +917,26 @@ BluetoothLEDevice::unregister_notify(unsigned int id)
 
   if (!bt_gatt_client_unregister_notify(cli->gatt, id)) {
     printf("Failed to unregister notify handler with id: %u\n", id);
-    return;
+  } else {
+    printf("Unregistered notify handler with id: %u\n", id);
   }
-
-  printf("Unregistered notify handler with id: %u\n", id);
 }
 
-/**
- * set security command
- *
- * @param cli    pointer to the client structure
- * @param cmd_str  set security command string
- */
 void
-BluetoothLEDevice::set_security(char * cmd_str)
+BluetoothLEDevice::set_security(int level)
 {
-  char * argvbuf[1];
-  char ** argv = argvbuf;
-  int argc = 0;
-  char * endptr = nullptr;
-  int level;
-
   if (!bt_gatt_client_is_ready(cli->gatt)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!parse_args(cmd_str, 1, argv, &argc)) {
-    printf("Too many arguments\n");
-    return;
-  }
-
-  if (argc < 1) {
-    printf("Too few arguments\n");
-    return;
-  }
-
-  level = strtol(argv[0], &endptr, 0);
-  if (!endptr || *endptr != '\0' || level < 1 || level > 3) {
-    printf("Invalid level: %s\n", argv[0]);
+  if (level < 1 || level > 3) {
+    printf("Invalid level: %d\n", level);
     return;
   }
 
   if (!bt_gatt_client_set_security(cli->gatt, level)) {
-    printf("Could not set sec level\n");
+    printf("Could not set security level\n");
   } else {
     printf("Setting security level %d success\n", level);
   }
@@ -1018,72 +953,24 @@ BluetoothLEDevice::get_security()
   int level = bt_gatt_client_get_security(cli->gatt);
 
   if (level < 0) {
-    printf("Could not set sec level\n");
+    printf("Could not get security level\n");
   } else {
     printf("Security level: %u\n", level);
   }
 }
 
-/**
- * convert sign key ascii to vector
- *
- * @param optarg  ascii key string
- * @param key    returned parsed vector
- * @return       true if success else false
- */
-static bool
-convert_sign_key(char * optarg, uint8_t key[16])
-{
-  if (strlen(optarg) != 32) {
-    printf("sign-key length is invalid\n");
-    return false;
-  }
-
-  for (int i = 0; i < 16; i++) {
-    if (sscanf(optarg + (i * 2), "%2hhx", &key[i]) != 1) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-static bool
-local_counter(uint32_t * sign_cnt, void * /*user_data*/)
+bool
+BluetoothLEDevice::local_counter(uint32_t * sign_cnt, void * /*user_data*/)
 {
   static uint32_t cnt = 0;
   *sign_cnt = cnt++;
   return true;
 }
 
-/**
- * set sign key command
- *
- * @param cli    pointer to client structure
- * @param cmd_str  set sign key command string
- */
 void
-BluetoothLEDevice::set_sign_key(char * cmd_str)
+BluetoothLEDevice::set_sign_key(uint8_t key[16])
 {
-  char * argv[3];
-  int argc = 0;
-  uint8_t key[16];
-
-  memset(key, 0, 16);
-
-  if (!parse_args(cmd_str, 2, argv, &argc)) {
-    return;
-  }
-
-  if (argc != 2) {
-    return;
-  }
-
-  if (!strcmp(argv[0], "-c") || !strcmp(argv[0], "--sign-key")) {
-    if (convert_sign_key(argv[1], key)) {
-      bt_att_set_local_key(cli->att, key, local_counter, cli);
-    }
-  }
+  bt_att_set_local_key(cli->att, key, local_counter, cli);
 }
 
 /**
@@ -1100,8 +987,8 @@ class BluetoothL2Cap2Socket
 {
 };
 
-static int
-l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, bool verbose)
+int
+BluetoothLEDevice::l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, bool verbose)
 {
   struct bt_security btsec;
 
@@ -1170,26 +1057,15 @@ l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, 
   return sock;
 }
 
-
-/**
- * write value command
- *
- * @param cli    pointer to the client structure
- * @param cmd_str  command string for write value
- */
 void
 BluetoothLEDevice::write_value(char * cmd_str)
 {
-  int opt, i;
+  int opt;
   char * argvbuf[516];
   char ** argv = argvbuf;
   int argc = 1;
-  uint16_t handle;
   char * endptr = nullptr;
-  int length;
   uint8_t * value = nullptr;
-  bool without_response = false;
-  bool signed_write = false;
 
   // printf("cmd_write_value: cmd_str: \"%s\"\n", cmd_str);
 
@@ -1202,6 +1078,9 @@ BluetoothLEDevice::write_value(char * cmd_str)
     printf("Too many arguments\n");
     return;
   }
+
+  bool without_response = false;
+  bool signed_write = false;
 
   optind = 0;
   argv[0] = (char *) "write-value";
@@ -1225,14 +1104,13 @@ BluetoothLEDevice::write_value(char * cmd_str)
     return;
   }
 
-  handle = strtol(argv[0], &endptr, 0);
+  uint16_t handle = strtol(argv[0], &endptr, 0);
   if (!endptr || *endptr != '\0' || !handle) {
     printf("Invalid handle: %s\n", argv[0]);
     return;
   }
 
-  length = argc - 1;
-
+  int length = argc - 1;
   if (length > 0) {
     if (length > UINT16_MAX) {
       printf("Write value too long\n");
@@ -1245,7 +1123,7 @@ BluetoothLEDevice::write_value(char * cmd_str)
       return;
     }
 
-    for (i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
       value[i - 1] = strtol(argv[i], &endptr, 16);
       if (endptr == argv[i] || *endptr != '\0' ||
         errno == ERANGE)

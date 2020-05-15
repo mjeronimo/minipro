@@ -19,7 +19,7 @@ namespace bluetooth
 {
 
 const char *
-utils::ecode_to_string(uint8_t ecode)
+utils::to_string(uint8_t ecode)
 {
   switch (ecode) {
     case BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND: return "Attribute Not Found";

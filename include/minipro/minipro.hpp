@@ -32,11 +32,10 @@ public:
   explicit MiniPro(const std::string & bt_address);
   MiniPro() = delete;
 
-  // Use units library (mph, degrees)?
-  int get_current_speed();        // mph
-  int get_battery_level();        // amps
-  int get_voltage();              // volts
-  int get_vehicle_temperature();  // degrees F
+  units::velocity::miles_per_hour_t get_current_speed();
+  units::current::ampere_t get_battery_level();
+  units::voltage::volt_t get_voltage();
+  units::temperature::fahrenheit_t get_vehicle_temperature();
 
   void enable_notifications();
   void disable_notifications();
@@ -44,7 +43,7 @@ public:
   void enter_remote_control_mode();
   void exit_remote_control_mode();
 
-  void drive(int16_t speed, int16_t angle);
+  void drive(int16_t throttle, int16_t steering);
 };
 
 }  // namespace minipro

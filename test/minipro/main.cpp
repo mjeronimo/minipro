@@ -15,15 +15,16 @@
 #include <atomic>
 #include <csignal>
 #include <iostream>
+#include <stdexcept>
 
 #include "minipro/minipro.hpp"
 #include "util/xbox360_controller.hpp"
 #include "util/loop_rate.hpp"
 
-using namespace units::frequency;
-
-using jeronibot::util::XBox360Controller;
+using jeronibot::minipro::MiniPro;
 using jeronibot::util::LoopRate;
+using jeronibot::util::XBox360Controller;
+using units::frequency::hertz;
 
 static std::atomic<bool> should_exit{false};
 
@@ -37,7 +38,7 @@ int main(int, char **)
   try {
     signal(SIGINT, signal_handler);
 
-    jeronibot::minipro::MiniPro minipro("F4:02:07:C6:C7:B4");
+    MiniPro minipro("F4:02:07:C6:C7:B4");
     minipro.enable_notifications();
     minipro.enter_remote_control_mode();
 
@@ -47,19 +48,19 @@ int main(int, char **)
     while (!should_exit) {
       // Flip the axis values so that forward and right are positive values
       // so that the direction of the MiniPRO matches the joysticks
-      auto speed = -joystick.get_axis_state(XBox360Controller::Axis_LeftThumbstick).y;
-      auto angle = -joystick.get_axis_state(XBox360Controller::Axis_RightThumbstick).x;
+      auto throttle = -joystick.get_axis_state(XBox360Controller::Axis_LeftThumbstick).y;
+      auto steering = -joystick.get_axis_state(XBox360Controller::Axis_RightThumbstick).x;
 
       // Set values to zero if below a specified threshold so that the MiniPRO
       // is stable when the joysticks are released (and wouldn't otherwise go
       // all the way back to 0). 4000 seems to work pretty well for my joystick
       const int zero_threshold = 4000;
-      if (abs(speed) < zero_threshold) {speed = 0;}
-      if (abs(angle) < zero_threshold) {angle = 0;}
+      if (abs(throttle) < zero_threshold) {throttle = 0;}
+      if (abs(steering) < zero_threshold) {steering = 0;}
 
       // Keep the MiniPRO fed with drive commands, throttling to achieve a
       // consistent rate. I need to empirically determine the minimum rate
-      minipro.drive(speed, angle);
+      minipro.drive(throttle, steering);
       loop_rate.sleep();
     }
 
@@ -67,11 +68,11 @@ int main(int, char **)
     minipro.drive(0, 0);
     minipro.exit_remote_control_mode();
     minipro.disable_notifications();
+
   } catch (std::exception & ex) {
-    std::cerr << "minipro: t exception: " << ex.what() << std::endl;
+    std::cerr << "Exception: " << ex.what() << std::endl;
     return -1;
   }
 
-  std::cout << "main: return 0" << std::endl;
   return 0;
 }

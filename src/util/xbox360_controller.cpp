@@ -22,12 +22,12 @@ namespace util
 {
 
 XBox360Controller::XBox360Controller(const std::string & device_name)
- : Joystick(device_name)
+: Joystick(device_name)
 {
 }
 
 XBox360Controller::XBox360Controller()
- : XBox360Controller("/dev/input/js0")
+: XBox360Controller("/dev/input/js0")
 {
 }
 
