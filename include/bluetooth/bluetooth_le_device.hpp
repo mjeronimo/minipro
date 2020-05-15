@@ -49,7 +49,7 @@ public:
 
   void get_security();
   void read_long_value(uint16_t handle, uint16_t value);
-  void read_multiple(char * cmd_str);
+  void read_multiple(uint16_t * handles, uint8_t num_handles);
   void read_value(uint16_t handle);
   void register_notify(uint16_t value_handle);
   void set_security(int level);

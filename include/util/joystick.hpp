@@ -29,8 +29,8 @@ namespace jeronibot {
 namespace util {
 
 typedef struct AxisState {
-  short x; 
-  short y; 
+  int16_t x; 
+  int16_t y; 
 } AxisState;
 
 class Joystick
@@ -53,7 +53,7 @@ protected:
   uint8_t num_axes_{0};
   uint8_t num_buttons_{0};
 
-  struct XY { std::atomic<short> x; std::atomic<short> y; };
+  struct XY { std::atomic<int16_t> x; std::atomic<int16_t> y; };
   std::map<uint8_t, struct XY> axis_map_;
 
   std::map<uint8_t, std::function<void(int)>> button_map_;

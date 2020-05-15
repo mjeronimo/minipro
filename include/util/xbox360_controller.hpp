@@ -15,8 +15,6 @@
 #ifndef UTIL_XBOX360_CONTROLLER_HPP_
 #define UTIL_XBOX360_CONTROLLER_HPP_
 
-#include <functional>
-
 #include "util/joystick.hpp"
 
 namespace jeronibot

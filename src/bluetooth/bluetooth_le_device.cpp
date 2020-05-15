@@ -33,6 +33,7 @@
 #include "bluetooth/utils.hpp"
 
 using namespace std::chrono_literals;
+using namespace jeronibot::util;
 
 namespace bluetooth
 {
@@ -391,41 +392,16 @@ BluetoothLEDevice::read_multiple_cb(
 }
 
 void
-BluetoothLEDevice::read_multiple(char * cmd_str)
+BluetoothLEDevice::read_multiple(uint16_t * handles, uint8_t num_handles)
 {
-  int argc = 0;
-  char * argv[512];
-  char * endptr = nullptr;
-
   if (!bt_gatt_client_is_ready(cli->gatt)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!parse_args(cmd_str, sizeof(argv), argv, &argc) || argc < 2) {
-    return;
-  }
-
-  uint16_t * value = reinterpret_cast<uint16_t *>(malloc(sizeof(uint16_t) * argc));
-  if (!value) {
-    printf("Failed to construct value\n");
-    return;
-  }
-
-  for (int i = 0; i < argc; i++) {
-    value[i] = strtol(argv[i], &endptr, 0);
-    if (endptr == argv[i] || *endptr != '\0' || !value[i]) {
-      printf("Invalid value byte: %s\n", argv[i]);
-      free(value);
-      return;
-    }
-  }
-
-  if (!bt_gatt_client_read_multiple(cli->gatt, value, argc, read_multiple_cb, nullptr, nullptr)) {
+  if (!bt_gatt_client_read_multiple(cli->gatt, handles, num_handles, read_multiple_cb, nullptr, nullptr)) {
     printf("Failed to initiate read multiple procedure\n");
   }
-
-  free(value);
 }
 
 /**
@@ -513,7 +489,6 @@ BluetoothLEDevice::write_cb(bool success, uint8_t att_ecode, void * user_data)
   }
 }
 
-
 static struct option write_long_value_options[] = {
   {"reliable-write", 0, 0, 'r'},
   {}
@@ -541,12 +516,6 @@ BluetoothLEDevice::write_long_cb(bool success, bool reliable_error, uint8_t att_
   }
 }
 
-/**
- * write long value command
- *
- * @param cli    pointer to the client structure
- * @param cmd_str  command string for write long value
- */
 void
 BluetoothLEDevice::write_long_value(char * cmd_str)
 {
@@ -655,12 +624,6 @@ static struct option write_prepare_options[] = {
   {}
 };
 
-/**
- * write prepare command
- *
- * @param cli    pointer to the client structure
- * @param cmd_str  write prepare command string
- */
 void
 BluetoothLEDevice::write_prepare(char * cmd_str)
 {
@@ -682,7 +645,7 @@ BluetoothLEDevice::write_prepare(char * cmd_str)
     return;
   }
 
-  /* Add command name for getopt_long */
+  // Add command name for getopt_long
   argc++;
   argv[0] = (char *) "write-prepare";
 
@@ -789,12 +752,6 @@ done:
   free(value);
 }
 
-/**
- * write execute command
- *
- * @param cli    pointer to the client structure
- * @param cmd_str  write execute command string
- */
 void
 BluetoothLEDevice::write_execute(char * cmd_str)
 {
@@ -847,14 +804,6 @@ BluetoothLEDevice::write_execute(char * cmd_str)
   cli->reliable_session_id = 0;
 }
 
-/**
- * notify call back
- *
- * @param value_handle  handle of the notifying object
- * @param value      vector value of the object
- * @param length    length of vector value
- * @param user_data    not used
- */
 void
 BluetoothLEDevice::notify_cb(
   uint16_t value_handle, const uint8_t * value,
@@ -897,14 +846,12 @@ BluetoothLEDevice::register_notify(uint16_t value_handle)
   }
 
   unsigned int id = bt_gatt_client_register_notify(
-    cli->gatt, value_handle,
-    register_notify_cb, notify_cb, nullptr, nullptr);
+    cli->gatt, value_handle, register_notify_cb, notify_cb, nullptr, nullptr);
+
   if (!id) {
     printf("Failed to register notify handler\n");
     return;
   }
-
-  printf("Registering notify handler with id: %u\n", id);
 }
 
 void
@@ -917,8 +864,6 @@ BluetoothLEDevice::unregister_notify(unsigned int id)
 
   if (!bt_gatt_client_unregister_notify(cli->gatt, id)) {
     printf("Failed to unregister notify handler with id: %u\n", id);
-  } else {
-    printf("Unregistered notify handler with id: %u\n", id);
   }
 }
 
@@ -937,8 +882,6 @@ BluetoothLEDevice::set_security(int level)
 
   if (!bt_gatt_client_set_security(cli->gatt, level)) {
     printf("Could not set security level\n");
-  } else {
-    printf("Setting security level %d success\n", level);
   }
 }
 
