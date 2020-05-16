@@ -28,7 +28,6 @@
 
 #include "bluez.h"
 #include "minipro/minipro.hpp"
-#include "util/ansi_colors.hpp"
 #include "util/joystick.hpp"
 #include "bluetooth/utils.hpp"
 
@@ -184,19 +183,14 @@ BluetoothLEDevice::print_included_data(struct gatt_db_attribute * attr, void * u
   bt_uuid_t uuid;
   gatt_db_attribute_get_service_uuid(service, &uuid);
 
-  printf(
-    "\t  " COLOR_GREEN "include" COLOR_OFF " - handle: "
-    "0x%04x, - start: 0x%04x, end: 0x%04x,"
-    "uuid: ", handle, start, end);
+  printf("\t  include - handle: 0x%04x, - start: 0x%04x, end: 0x%04x, uuid: ", handle, start, end);
   BluetoothLEDevice::print_uuid(&uuid);
 }
 
 void
 BluetoothLEDevice::print_descriptor(struct gatt_db_attribute * attr, void * user_data)
 {
-  printf(
-    "\t\t  " COLOR_MAGENTA "descr" COLOR_OFF " - handle: 0x%04x, uuid: ",
-    gatt_db_attribute_get_handle(attr));
+  printf("\t\t  descr - handle: 0x%04x, uuid: ", gatt_db_attribute_get_handle(attr));
   BluetoothLEDevice::print_uuid(gatt_db_attribute_get_type(attr));
 }
 
@@ -213,11 +207,7 @@ BluetoothLEDevice::print_characteristic(struct gatt_db_attribute * attr, void * 
     return;
   }
 
-  printf(
-    "\t  " COLOR_YELLOW "charac" COLOR_OFF
-    " - start: 0x%04x, value: 0x%04x, "
-    "props: 0x%02x, uuid: ",
-    handle, value_handle, properties);
+  printf("\t  charac - start: 0x%04x, value: 0x%04x, " "props: 0x%02x, uuid: ", handle, value_handle, properties);
   BluetoothLEDevice::print_uuid(&uuid);
 
   gatt_db_service_foreach_desc(attr, print_descriptor, nullptr);
@@ -236,10 +226,7 @@ BluetoothLEDevice::print_service(struct gatt_db_attribute * attr, void * user_da
     return;
   }
 
-  printf(
-    COLOR_RED "service" COLOR_OFF " - start: 0x%04x, "
-    "end: 0x%04x, type: %s, uuid: ",
-    start, end, primary ? "primary" : "secondary");
+  printf("service - start: 0x%04x, end: 0x%04x, type: %s, uuid: ", start, end, primary ? "primary" : "secondary");
   BluetoothLEDevice::print_uuid(&uuid);
 
   gatt_db_service_foreach_incl(attr, print_included_data, This);
@@ -415,106 +402,20 @@ BluetoothLEDevice::write_long_cb(bool success, bool reliable_error, uint8_t att_
 }
 
 void
-BluetoothLEDevice::write_long_value(char * cmd_str)
+BluetoothLEDevice::write_long_value(
+      bool reliable_writes, uint16_t handle,
+      uint16_t offset, uint8_t * value, int length)
 {
-  int opt, i;
-  char * argvbuf[516];
-  char ** argv = argvbuf;
-  int argc = 1;
-  char * endptr = nullptr;
-  uint8_t * value = nullptr;
-  bool reliable_writes = false;
-
   if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!parse_args(cmd_str, 514, argv + 1, &argc)) {
-    printf("Too many arguments\n");
-    return;
-  }
-
-  optind = 0;
-  argv[0] = (char *) "write-long-value";
-  while ((opt = getopt_long(
-      argc, argv, "+r", write_long_value_options,
-      nullptr)) != -1)
-  {
-    switch (opt) {
-      case 'r':
-        reliable_writes = true;
-        break;
-      default:
-        return;
-    }
-  }
-
-  argc -= optind;
-  argv += optind;
-
-  if (argc < 2) {
-    return;
-  }
-
-  uint16_t handle = strtol(argv[0], &endptr, 0);
-  if (!endptr || *endptr != '\0' || !handle) {
-    printf("Invalid handle: %s\n", argv[0]);
-    return;
-  }
-
-  endptr = nullptr;
-  uint16_t offset = strtol(argv[1], &endptr, 0);
-  if (!endptr || *endptr != '\0' || errno == ERANGE) {
-    printf("Invalid offset: %s\n", argv[1]);
-    return;
-  }
-
-  int length = argc - 2;
-  if (length > 0) {
-    if (length > UINT16_MAX) {
-      printf("Write value too long\n");
-      return;
-    }
-
-    value = reinterpret_cast<uint8_t *>(malloc(length));
-    if (!value) {
-      printf("Failed to construct write value\n");
-      return;
-    }
-
-    for (i = 2; i < argc; i++) {
-      if (strlen(argv[i]) != 2) {
-        printf(
-          "Invalid value byte: %s\n",
-          argv[i]);
-        free(value);
-        return;
-      }
-
-      value[i - 2] = strtol(argv[i], &endptr, 0);
-      if (endptr == argv[i] || *endptr != '\0' ||
-        errno == ERANGE)
-      {
-        printf(
-          "Invalid value byte: %s\n",
-          argv[i]);
-        free(value);
-        return;
-      }
-    }
-  }
-
-  if (!bt_gatt_client_write_long_value(
-      gatt_, reliable_writes, handle,
-      offset, value, length,
-      write_long_cb,
-      nullptr, nullptr))
+  if (!bt_gatt_client_write_long_value(gatt_, reliable_writes, handle,
+      offset, value, length, write_long_cb, nullptr, nullptr))
   {
     printf("Failed to initiate long write procedure\n");
   }
-
-  free(value);
 }
 
 static struct option write_prepare_options[] = {
@@ -523,171 +424,33 @@ static struct option write_prepare_options[] = {
 };
 
 void
-BluetoothLEDevice::write_prepare(char * cmd_str)
+BluetoothLEDevice::write_prepare(unsigned int id, uint16_t handle, uint16_t offset, uint8_t * value, unsigned int length)
 {
-  int opt, i;
-  char * argvbuf[516];
-  char ** argv = argvbuf;
-  int argc = 0;
-  unsigned int id = 0;
-  char * endptr = nullptr;
-  uint8_t * value = nullptr;
-
   if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
-    return;
-  }
-
-  if (!parse_args(cmd_str, 514, argv + 1, &argc)) {
-    printf("Too many arguments\n");
-    return;
-  }
-
-  // Add command name for getopt_long
-  argc++;
-  argv[0] = (char *) "write-prepare";
-
-  optind = 0;
-  while ((opt = getopt_long(
-      argc, argv, "s:", write_prepare_options,
-      nullptr)) != -1)
-  {
-    switch (opt) {
-      case 's':
-        if (!optarg) {
-          return;
-        }
-
-        id = atoi(optarg);
-
-        break;
-      default:
-        return;
-    }
-  }
-
-  argc -= optind;
-  argv += optind;
-
-  if (argc < 3) {
     return;
   }
 
   if (reliable_session_id_ != id) {
-    printf(
-      "Session id != Ongoing session id (%u!=%u)\n", id,
-      reliable_session_id_);
+    printf("Session id != Ongoing session id (%u!=%u)\n", id, reliable_session_id_);
     return;
   }
 
-  uint16_t handle = strtol(argv[0], &endptr, 0);
-  if (!endptr || *endptr != '\0' || !handle) {
-    printf("Invalid handle: %s\n", argv[0]);
-    return;
-  }
-
-  endptr = nullptr;
-  uint16_t offset = strtol(argv[1], &endptr, 0);
-  if (!endptr || *endptr != '\0' || errno == ERANGE) {
-    printf("Invalid offset: %s\n", argv[1]);
-    return;
-  }
-
-  /*
-   * First two arguments are handle and offset. What remains is the value
-   * length
-   */
-  unsigned int length = argc - 2;
-
-  if (length == 0) {
-    goto done;
-  }
-
-  if (length > UINT16_MAX) {
-    printf("Write value too long\n");
-    return;
-  }
-
-  value = reinterpret_cast<uint8_t *>(malloc(length));
-  if (!value) {
-    printf("Failed to allocate memory for value\n");
-    return;
-  }
-
-  for (i = 2; i < argc; i++) {
-    if (strlen(argv[i]) != 2) {
-      printf("Invalid value byte: %s\n", argv[i]);
-      free(value);
-      return;
-    }
-
-    value[i - 2] = strtol(argv[i], &endptr, 0);
-    if (endptr == argv[i] || *endptr != '\0' || errno == ERANGE) {
-      printf("Invalid value byte: %s\n", argv[i]);
-      free(value);
-      return;
-    }
-  }
-
-done:
-  reliable_session_id_ =
-    bt_gatt_client_prepare_write(
-    gatt_, id,
-    handle, offset,
-    value, length,
-    write_long_cb, nullptr,
-    nullptr);
+  reliable_session_id_ = bt_gatt_client_prepare_write(gatt_, id, handle, offset, value, length,
+      write_long_cb, nullptr, nullptr);
 
   if (!reliable_session_id_) {
     printf("Failed to proceed prepare write\n");
   } else {
-    printf(
-      "Prepare write success.\n"
-      "Session id: %d to be used on next write\n",
-      reliable_session_id_);
+    printf("Prepare write success.\nSession id: %d to be used on next write\n", reliable_session_id_);
   }
-
-  free(value);
 }
 
 void
-BluetoothLEDevice::write_execute(char * cmd_str)
+BluetoothLEDevice::write_execute(unsigned int session_id, bool execute)
 {
-  char * argvbuf[516];
-  char ** argv = argvbuf;
-  int argc = 0;
-  char * endptr = nullptr;
-
   if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
-    return;
-  }
-
-  if (!parse_args(cmd_str, 514, argv, &argc)) {
-    printf("Too many arguments\n");
-    return;
-  }
-
-  if (argc < 2) {
-    return;
-  }
-
-  unsigned int session_id = strtol(argv[0], &endptr, 0);
-  if (!endptr || *endptr != '\0') {
-    printf("Invalid session id: %s\n", argv[0]);
-    return;
-  }
-
-  if (session_id != reliable_session_id_) {
-    printf(
-      "Invalid session id: %u != %u\n", session_id,
-      reliable_session_id_);
-    return;
-  }
-
-  bool execute = !!strtol(argv[1], &endptr, 0);
-  if (!endptr || *endptr != '\0') {
-    printf("Invalid execute: %s\n", argv[1]);
     return;
   }
 
@@ -783,21 +546,26 @@ BluetoothLEDevice::set_security(int level)
   }
 }
 
-void
+#if 0
+3 #define BT_SECURITY 4
+   struct bt_security {
+       uint8_t level;
+       uint8_t key_size;
+   };
+   #define BT_SECURITY_SDP     0
+   #define BT_SECURITY_LOW     1
+   #define BT_SECURITY_MEDIUM  2
+   #define BT_SECURITY_HIGH    3
+#endif
+int
 BluetoothLEDevice::get_security()
 {
   if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
-    return;
+    return -1;
   }
 
-  int level = bt_gatt_client_get_security(gatt_);
-
-  if (level < 0) {
-    printf("Could not get security level\n");
-  } else {
-    printf("Security level: %u\n", level);
-  }
+  return bt_gatt_client_get_security(gatt_);
 }
 
 bool

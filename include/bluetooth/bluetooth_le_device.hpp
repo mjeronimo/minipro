@@ -45,7 +45,7 @@ public:
 
   ~BluetoothLEDevice();
 
-  void get_security();
+  int get_security();
   void set_security(int level);
 
   void read_long_value(uint16_t handle, uint16_t value);
@@ -65,12 +65,12 @@ public:
 
   void unregister_notify(unsigned int id);
 
-  void write_execute(char * cmd_str);
+  void write_execute(unsigned int session_id, bool execute);
 
-  void write_long_value(char * cmd_str);
+  void write_long_value(bool reliable_writes, uint16_t handle, uint16_t offset, uint8_t * value, int length);
   static void write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * user_data);
 
-  void write_prepare(char * cmd_str);
+  void write_prepare(unsigned int id, uint16_t handle, uint16_t offset, uint8_t * value, unsigned int length);
 
   void write_value(char * cmd_str);
   static void write_cb(bool success, uint8_t att_ecode, void * user_data);
