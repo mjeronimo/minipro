@@ -38,34 +38,75 @@ using namespace jeronibot::util;
 namespace bluetooth
 {
 
+// class BluetoothLEClient
 BluetoothLEDevice::BluetoothLEDevice(
   const std::string & device_address, uint8_t dst_type, int sec,
   uint16_t mtu)
 {
-  bool verbose = false;
-  bdaddr_t bdaddr_any = {{0, 0, 0, 0, 0, 0}};
-
   bdaddr_t dst_addr;
   str2ba(device_address.c_str(), &dst_addr);
 
   bdaddr_t src_addr;
+  bdaddr_t bdaddr_any = {{0, 0, 0, 0, 0, 0}};
   bacpy(&src_addr, &bdaddr_any);
 
   mainloop_init();
 
-  fd = l2cap_le_att_connect(&src_addr, &dst_addr, dst_type, sec, verbose);
-  if (fd < 0) {
+  // class bluetooth::L2CapSocket
+
+  fd_ = l2cap_le_att_connect(&src_addr, &dst_addr, dst_type, sec);
+  if (fd_ < 0) {
     throw std::runtime_error("BluetoothLEDevice: Failed to connect to Bluetooth device");
   }
 
-  cli = client_create(fd, mtu, verbose);
-  if (!cli) {
-    close(fd);
-    throw std::runtime_error("BluetoothLEDevice: client_create failed");
+  att_ = bt_att_new(fd_, false);
+  if (!att_) {
+    fprintf(stderr, "Failed to initialize ATT transport layer\n");
+    bt_att_unref(att_);
+    return;
   }
 
-  bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, this, nullptr);
-  bt_gatt_client_set_service_changed(cli->gatt, service_changed_cb, this, nullptr);
+  if (!bt_att_set_close_on_unref(att_, true)) {
+    fprintf(stderr, "Failed to set up ATT transport layer\n");
+    bt_att_unref(att_);
+    return;
+  }
+
+  if (!bt_att_register_disconnect(
+      att_, BluetoothLEDevice::att_disconnect_cb, nullptr,
+      nullptr))
+  {
+    fprintf(stderr, "Failed to set ATT disconnect handler\n");
+    bt_att_unref(att_);
+    return;
+  }
+
+  // class bluetooth GattClient
+  db_ = gatt_db_new();
+  if (!db_) {
+    fprintf(stderr, "Failed to create GATT database\n");
+    bt_att_unref(att_);
+    return;
+  }
+
+  gatt_ = bt_gatt_client_new(db_, att_, mtu);
+  if (!gatt_) {
+    fprintf(stderr, "Failed to create GATT client\n");
+    gatt_db_unref(db_);
+    bt_att_unref(att_);
+    return;
+  }
+
+  gatt_db_register(db_, service_added_cb, service_removed_cb, nullptr, nullptr);
+
+  bt_gatt_client_set_ready_handler(gatt_, ready_cb, this, nullptr);
+  bt_gatt_client_set_service_changed(gatt_, service_changed_cb, this, nullptr);
+
+  // bt_gatt_client already holds a reference
+  gatt_db_unref(db_);
+
+  // bt_gatt_client_set_ready_handler(gatt_, ready_cb, this, nullptr);
+  // bt_gatt_client_set_service_changed(gatt_, service_changed_cb, this, nullptr);
 
   input_thread_ = std::make_unique<std::thread>(std::bind(&BluetoothLEDevice::process_input, this));
 
@@ -85,7 +126,11 @@ BluetoothLEDevice::~BluetoothLEDevice()
   printf("BluetoothLEDevice::~BluetoothLEDevice: after calling mainloop_quit\n");
   input_thread_->join();
   printf("BluetoothLEDevice: Shutting down...\n");
-  client_destroy(cli);
+
+  // client_destroy();
+  bt_gatt_client_unref(gatt_);
+  bt_att_unref(att_);
+
   printf("BluetoothLEDevice::~BluetoothLEDevice: after client_destroy\n");
 }
 
@@ -96,24 +141,6 @@ BluetoothLEDevice::att_disconnect_cb(int err, void * /*user_data*/)
   mainloop_quit();
 }
 
-// Print a prefix (user_data) followed by a message (str)
-// Example att: ATT op 0x02 (att: is the prefix)
-void
-BluetoothLEDevice::att_debug_cb(const char * str, void * user_data)
-{
-  const char * prefix = (const char *) user_data;
-  printf(COLOR_BOLDGRAY "%s" COLOR_BOLDWHITE "%s\n" COLOR_OFF, prefix, str);
-}
-
-// Print a prefix (user_data) followed by a message (str)
-// Example gatt: MTU exchange complete, with MTU: 23 (gatt: is the prefix)
-void
-BluetoothLEDevice::gatt_debug_cb(const char * str, void * user_data)
-{
-  const char * prefix = (const char *) user_data;
-  printf(COLOR_GREEN "%s%s\n" COLOR_OFF, prefix, str);
-}
-
 void
 BluetoothLEDevice::service_added_cb(struct gatt_db_attribute * attr, void * user_data)
 {
@@ -122,95 +149,6 @@ BluetoothLEDevice::service_added_cb(struct gatt_db_attribute * attr, void * user
 void
 BluetoothLEDevice::service_removed_cb(struct gatt_db_attribute * attr, void * user_data)
 {
-}
-
-// Class GattClient
-/**
- * create an gatt client attached to the fd l2cap socket
- *
- * @param fd  socket
- * @param mtu  selected pdu size
- * @return gatt client structure
- */
-struct client *
-BluetoothLEDevice::client_create(int fd, uint16_t mtu, bool verbose)
-{
-  struct client * cli = new0(struct client, 1);
-
-  if (!cli) {
-    fprintf(stderr, "Failed to allocate memory for client\n");
-    return nullptr;
-  }
-
-  cli->att = bt_att_new(fd, false);
-  if (!cli->att) {
-    fprintf(stderr, "Failed to initialze ATT transport layer\n");
-    bt_att_unref(cli->att);
-    free(cli);
-    return nullptr;
-  }
-
-  if (!bt_att_set_close_on_unref(cli->att, true)) {
-    fprintf(stderr, "Failed to set up ATT transport layer\n");
-    bt_att_unref(cli->att);
-    free(cli);
-    return nullptr;
-  }
-
-  if (!bt_att_register_disconnect(
-      cli->att, BluetoothLEDevice::att_disconnect_cb, nullptr,
-      nullptr))
-  {
-    fprintf(stderr, "Failed to set ATT disconnect handler\n");
-    bt_att_unref(cli->att);
-    free(cli);
-    return nullptr;
-  }
-
-  cli->fd = fd;
-  cli->db = gatt_db_new();
-  if (!cli->db) {
-    fprintf(stderr, "Failed to create GATT database\n");
-    bt_att_unref(cli->att);
-    free(cli);
-    return nullptr;
-  }
-
-  cli->gatt = bt_gatt_client_new(cli->db, cli->att, mtu);
-  if (!cli->gatt) {
-    fprintf(stderr, "Failed to create GATT client\n");
-    gatt_db_unref(cli->db);
-    bt_att_unref(cli->att);
-    free(cli);
-    return nullptr;
-  }
-
-  gatt_db_register(cli->db, service_added_cb, service_removed_cb, nullptr, nullptr);
-
-  if (verbose) {
-    bt_att_set_debug(
-      cli->att, BluetoothLEDevice::att_debug_cb,
-      reinterpret_cast<void *>(const_cast<char *>("att: ")), nullptr);
-    bt_gatt_client_set_debug(
-      cli->gatt, gatt_debug_cb,
-      reinterpret_cast<void *>(const_cast<char *>("gatt: ")), nullptr);
-  }
-
-  // bt_gatt_client_set_ready_handler(cli->gatt, ready_cb, cli, nullptr);
-  // bt_gatt_client_set_service_changed(cli->gatt, service_changed_cb, cli, nullptr);
-
-  // bt_gatt_client already holds a reference
-  gatt_db_unref(cli->db);
-
-  return cli;
-}
-
-void
-BluetoothLEDevice::client_destroy(struct client * cli)
-{
-  bt_gatt_client_unref(cli->gatt);
-  bt_att_unref(cli->att);
-  free(cli);
 }
 
 void
@@ -228,20 +166,22 @@ BluetoothLEDevice::print_uuid(const bt_uuid_t * uuid)
 void
 BluetoothLEDevice::print_included_data(struct gatt_db_attribute * attr, void * user_data)
 {
-  struct client * cli = (struct client *) user_data;
-  uint16_t handle, start, end;
-  struct gatt_db_attribute * service;
-  bt_uuid_t uuid;
+  BluetoothLEDevice * This = (BluetoothLEDevice *) user_data;
+
+  uint16_t handle;
+  uint16_t start;
+  uint16_t end;
 
   if (!gatt_db_attribute_get_incl_data(attr, &handle, &start, &end)) {
     return;
   }
 
-  service = gatt_db_get_attribute(cli->db, start);
+  struct gatt_db_attribute * service = gatt_db_get_attribute(This->db_, start);
   if (!service) {
     return;
   }
 
+  bt_uuid_t uuid;
   gatt_db_attribute_get_service_uuid(service, &uuid);
 
   printf(
@@ -286,7 +226,8 @@ BluetoothLEDevice::print_characteristic(struct gatt_db_attribute * attr, void * 
 void
 BluetoothLEDevice::print_service(struct gatt_db_attribute * attr, void * user_data)
 {
-  struct client * cli = (struct client *) user_data;
+  BluetoothLEDevice *This = (BluetoothLEDevice *) user_data;
+
   uint16_t start, end;
   bool primary;
   bt_uuid_t uuid;
@@ -301,7 +242,7 @@ BluetoothLEDevice::print_service(struct gatt_db_attribute * attr, void * user_da
     start, end, primary ? "primary" : "secondary");
   BluetoothLEDevice::print_uuid(&uuid);
 
-  gatt_db_service_foreach_incl(attr, print_included_data, cli);
+  gatt_db_service_foreach_incl(attr, print_included_data, This);
   gatt_db_service_foreach_char(attr, print_characteristic, nullptr);
 
   printf("\n");
@@ -310,7 +251,6 @@ BluetoothLEDevice::print_service(struct gatt_db_attribute * attr, void * user_da
 void
 BluetoothLEDevice::ready_cb(bool success, uint8_t att_ecode, void * user_data)
 {
-  // struct client * cli = (struct client *) user_data;
   BluetoothLEDevice * This = (BluetoothLEDevice *) user_data;
 
   if (!success) {
@@ -330,9 +270,10 @@ BluetoothLEDevice::ready_cb(bool success, uint8_t att_ecode, void * user_data)
 void
 BluetoothLEDevice::service_changed_cb(uint16_t start_handle, uint16_t end_handle, void * user_data)
 {
-  struct client * cli = (struct client *) user_data;
+  BluetoothLEDevice * This = (BluetoothLEDevice *) user_data;
+
   printf("\nService Changed handled - start: 0x%04x end: 0x%04x\n", start_handle, end_handle);
-  gatt_db_foreach_service_in_range(cli->db, nullptr, print_service, cli, start_handle, end_handle);
+  gatt_db_foreach_service_in_range(This->db_, nullptr, print_service, This, start_handle, end_handle);
 }
 
 /**
@@ -363,19 +304,9 @@ BluetoothLEDevice::parse_args(char * str, int expected_argc, char ** argv, int *
   return true;
 }
 
-/**
- * read multiple callback
- *
- * @param success    ==0 => print error, <>0 print values
- * @param att_ecode   att error code
- * @param value      vector of values
- * @param length    number of values
- * @param user_data    not used
- */
 void
 BluetoothLEDevice::read_multiple_cb(
-  bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length,
-  void * user_data)
+  bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length, void * /*user_data*/)
 {
   if (!success) {
     printf("\nRead multiple request failed: 0x%02x\n", att_ecode);
@@ -383,36 +314,25 @@ BluetoothLEDevice::read_multiple_cb(
   }
 
   printf("\nRead multiple value (%u bytes):", length);
-
   for (int i = 0; i < length; i++) {
     printf("%02x ", value[i]);
   }
-
   printf("\n");
 }
 
 void
 BluetoothLEDevice::read_multiple(uint16_t * handles, uint8_t num_handles)
 {
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!bt_gatt_client_read_multiple(cli->gatt, handles, num_handles, read_multiple_cb, nullptr, nullptr)) {
+  if (!bt_gatt_client_read_multiple(gatt_, handles, num_handles, read_multiple_cb, nullptr, nullptr)) {
     printf("Failed to initiate read multiple procedure\n");
   }
 }
 
-/**
- * read value callback
- *
- * @param success    ==0 => print error, <>0 print value
- * @param att_ecode    att error code
- * @param value      vector of values
- * @param length    size of vector
- * @param user_data    not used
- */
 void
 BluetoothLEDevice::read_cb(bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length, void * /*user_data*/)
 {
@@ -424,14 +344,12 @@ BluetoothLEDevice::read_cb(bool success, uint8_t att_ecode, const uint8_t * valu
   }
 
   printf("\nRead value");
-
   if (length == 0) {
     printf(": 0 bytes\n");
     return;
   }
 
   printf(" (%u bytes): ", length);
-
   for (int i = 0; i < length; i++) {
     printf("%02x ", value[i]);
   }
@@ -442,12 +360,12 @@ BluetoothLEDevice::read_cb(bool success, uint8_t att_ecode, const uint8_t * valu
 void
 BluetoothLEDevice::read_value(uint16_t handle)
 {
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!bt_gatt_client_read_value(cli->gatt, handle, read_cb, nullptr, nullptr)) {
+  if (!bt_gatt_client_read_value(gatt_, handle, read_cb, nullptr, nullptr)) {
     printf("Failed to initiate read value\n");
   }
 }
@@ -455,12 +373,12 @@ BluetoothLEDevice::read_value(uint16_t handle)
 void
 BluetoothLEDevice::read_long_value(uint16_t handle, uint16_t offset)
 {
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!bt_gatt_client_read_long_value(cli->gatt, handle, offset, read_cb, nullptr, nullptr)) {
+  if (!bt_gatt_client_read_long_value(gatt_, handle, offset, read_cb, nullptr, nullptr)) {
     printf("Failed to initiate read long value\n");
   }
 }
@@ -471,21 +389,11 @@ static struct option write_value_options[] = {
   {}
 };
 
-/**
- * write value call back
- *
- * @param success    ==0 => print error, <>0 print value
- * @param att_ecode    att error code
- * @param user_data    not used
- */
-
 void
 BluetoothLEDevice::write_cb(bool success, uint8_t att_ecode, void * user_data)
 {
   if (!success) {
-    printf(
-      "\nWrite failed: %s (0x%02x)\n", bluetooth::utils::to_string(att_ecode),
-      att_ecode);
+    printf("Write failed: %s (0x%02x)\n", bluetooth::utils::to_string(att_ecode), att_ecode);
   }
 }
 
@@ -494,25 +402,15 @@ static struct option write_long_value_options[] = {
   {}
 };
 
-/**
- * write long call back
- *
- * @param success      ==0 => print error, <>0 print value
- * @param reliable_error  status of the write operation when failed
- * @param att_ecode      att error code
- * @param user_data      not used
- */
 void
-BluetoothLEDevice::write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * user_data)
+BluetoothLEDevice::write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * /*user_data*/)
 {
   if (success) {
     // printf("Write successful\n");
   } else if (reliable_error) {
     printf("Reliable write not verified\n");
   } else {
-    printf(
-      "\nWrite failed: %s (0x%02x)\n", bluetooth::utils::to_string(att_ecode),
-      att_ecode);
+    printf("Write failed: %s (0x%02x)\n", bluetooth::utils::to_string(att_ecode), att_ecode);
   }
 }
 
@@ -527,7 +425,7 @@ BluetoothLEDevice::write_long_value(char * cmd_str)
   uint8_t * value = nullptr;
   bool reliable_writes = false;
 
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
@@ -608,7 +506,7 @@ BluetoothLEDevice::write_long_value(char * cmd_str)
   }
 
   if (!bt_gatt_client_write_long_value(
-      cli->gatt, reliable_writes, handle,
+      gatt_, reliable_writes, handle,
       offset, value, length,
       write_long_cb,
       nullptr, nullptr))
@@ -635,7 +533,7 @@ BluetoothLEDevice::write_prepare(char * cmd_str)
   char * endptr = nullptr;
   uint8_t * value = nullptr;
 
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
@@ -675,10 +573,10 @@ BluetoothLEDevice::write_prepare(char * cmd_str)
     return;
   }
 
-  if (cli->reliable_session_id != id) {
+  if (reliable_session_id_ != id) {
     printf(
       "Session id != Ongoing session id (%u!=%u)\n", id,
-      cli->reliable_session_id);
+      reliable_session_id_);
     return;
   }
 
@@ -732,21 +630,21 @@ BluetoothLEDevice::write_prepare(char * cmd_str)
   }
 
 done:
-  cli->reliable_session_id =
+  reliable_session_id_ =
     bt_gatt_client_prepare_write(
-    cli->gatt, id,
+    gatt_, id,
     handle, offset,
     value, length,
     write_long_cb, nullptr,
     nullptr);
 
-  if (!cli->reliable_session_id) {
+  if (!reliable_session_id_) {
     printf("Failed to proceed prepare write\n");
   } else {
     printf(
       "Prepare write success.\n"
       "Session id: %d to be used on next write\n",
-      cli->reliable_session_id);
+      reliable_session_id_);
   }
 
   free(value);
@@ -760,7 +658,7 @@ BluetoothLEDevice::write_execute(char * cmd_str)
   int argc = 0;
   char * endptr = nullptr;
 
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
@@ -780,10 +678,10 @@ BluetoothLEDevice::write_execute(char * cmd_str)
     return;
   }
 
-  if (session_id != cli->reliable_session_id) {
+  if (session_id != reliable_session_id_) {
     printf(
       "Invalid session id: %u != %u\n", session_id,
-      cli->reliable_session_id);
+      reliable_session_id_);
     return;
   }
 
@@ -794,14 +692,14 @@ BluetoothLEDevice::write_execute(char * cmd_str)
   }
 
   if (execute) {
-    if (!bt_gatt_client_write_execute(cli->gatt, session_id, write_cb, nullptr, nullptr)) {
+    if (!bt_gatt_client_write_execute(gatt_, session_id, write_cb, nullptr, nullptr)) {
       printf("Failed to proceed write execute\n");
     }
   } else {
-    bt_gatt_client_cancel(cli->gatt, session_id);
+    bt_gatt_client_cancel(gatt_, session_id);
   }
 
-  cli->reliable_session_id = 0;
+  reliable_session_id_ = 0;
 }
 
 void
@@ -840,13 +738,13 @@ BluetoothLEDevice::register_notify_cb(uint16_t att_ecode, void * /*user_data*/)
 void
 BluetoothLEDevice::register_notify(uint16_t value_handle)
 {
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
 
   unsigned int id = bt_gatt_client_register_notify(
-    cli->gatt, value_handle, register_notify_cb, notify_cb, nullptr, nullptr);
+    gatt_, value_handle, register_notify_cb, notify_cb, nullptr, nullptr);
 
   if (!id) {
     printf("Failed to register notify handler\n");
@@ -857,12 +755,12 @@ BluetoothLEDevice::register_notify(uint16_t value_handle)
 void
 BluetoothLEDevice::unregister_notify(unsigned int id)
 {
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!bt_gatt_client_unregister_notify(cli->gatt, id)) {
+  if (!bt_gatt_client_unregister_notify(gatt_, id)) {
     printf("Failed to unregister notify handler with id: %u\n", id);
   }
 }
@@ -870,7 +768,7 @@ BluetoothLEDevice::unregister_notify(unsigned int id)
 void
 BluetoothLEDevice::set_security(int level)
 {
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
@@ -880,7 +778,7 @@ BluetoothLEDevice::set_security(int level)
     return;
   }
 
-  if (!bt_gatt_client_set_security(cli->gatt, level)) {
+  if (!bt_gatt_client_set_security(gatt_, level)) {
     printf("Could not set security level\n");
   }
 }
@@ -888,12 +786,12 @@ BluetoothLEDevice::set_security(int level)
 void
 BluetoothLEDevice::get_security()
 {
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  int level = bt_gatt_client_get_security(cli->gatt);
+  int level = bt_gatt_client_get_security(gatt_);
 
   if (level < 0) {
     printf("Could not get security level\n");
@@ -913,7 +811,7 @@ BluetoothLEDevice::local_counter(uint32_t * sign_cnt, void * /*user_data*/)
 void
 BluetoothLEDevice::set_sign_key(uint8_t key[16])
 {
-  bt_att_set_local_key(cli->att, key, local_counter, cli);
+  bt_att_set_local_key(att_, key, local_counter, this);
 }
 
 /**
@@ -931,14 +829,14 @@ class BluetoothL2Cap2Socket
 };
 
 int
-BluetoothLEDevice::l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec, bool verbose)
+BluetoothLEDevice::l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec)
 {
   struct bt_security btsec;
 
   char dstaddr_str[18];
   ba2str(dst, dstaddr_str);
 
-  if (verbose) {
+  if (false) {
     char srcaddr_str[18];
     ba2str(src, srcaddr_str);
 
@@ -1012,7 +910,7 @@ BluetoothLEDevice::write_value(char * cmd_str)
 
   // printf("cmd_write_value: cmd_str: \"%s\"\n", cmd_str);
 
-  if (!bt_gatt_client_is_ready(cli->gatt)) {
+  if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
@@ -1080,14 +978,14 @@ BluetoothLEDevice::write_value(char * cmd_str)
   }
 
   if (without_response) {
-    if (!bt_gatt_client_write_without_response(cli->gatt, handle, signed_write, value, length)) {
+    if (!bt_gatt_client_write_without_response(gatt_, handle, signed_write, value, length)) {
       printf("Failed to initiate write without response procedure\n");
       goto done;
     }
     goto done;
   }
 
-  if (!bt_gatt_client_write_value(cli->gatt, handle, value, length, write_cb, nullptr, nullptr)) {
+  if (!bt_gatt_client_write_value(gatt_, handle, value, length, write_cb, nullptr, nullptr)) {
     printf("Failed to initiate write procedure\n");
   }
 
