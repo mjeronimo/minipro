@@ -71,8 +71,7 @@ public:
   static void write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * user_data);
 
   void write_prepare(unsigned int id, uint16_t handle, uint16_t offset, uint8_t * value, unsigned int length);
-
-  void write_value(char * cmd_str);
+  void write_value(uint16_t handle, uint8_t * value, int length, bool without_response = false, bool signed_write = false);
   static void write_cb(bool success, uint8_t att_ecode, void * user_data);
 
 protected:
@@ -91,8 +90,6 @@ protected:
 
 public:
   static int l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec);
-
-  static bool parse_args(char * str, int expected_argc, char ** argv, int * argc);
 
   // TODO(mjeronimo): move to utils
   static void print_uuid(const bt_uuid_t * uuid);

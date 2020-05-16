@@ -6,7 +6,7 @@
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software
+// Unless required by applicable law or agreed to in writing, softwars
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
@@ -263,34 +263,6 @@ BluetoothLEDevice::service_changed_cb(uint16_t start_handle, uint16_t end_handle
   gatt_db_foreach_service_in_range(This->db_, nullptr, print_service, This, start_handle, end_handle);
 }
 
-/**
- * parse command string
- *
- * @param str      command to parse
- * @param expected_argc  number of arguments expected
- * @param argv      pointers to arguments separated by space or tab
- * @param argc      argument counter (and actual count)
- * @return        true = success false = error
- */
-bool
-BluetoothLEDevice::parse_args(char * str, int expected_argc, char ** argv, int * argc)
-{
-  for (char ** ap = argv; (*ap = strsep(&str, " \t")) != nullptr; ) {
-    if (**ap == '\0') {
-      continue;
-    }
-
-    (*argc)++;
-    ap++;
-
-    if (*argc > expected_argc) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 void
 BluetoothLEDevice::read_multiple_cb(
   bool success, uint8_t att_ecode, const uint8_t * value, uint16_t length, void * /*user_data*/)
@@ -370,12 +342,6 @@ BluetoothLEDevice::read_long_value(uint16_t handle, uint16_t offset)
   }
 }
 
-static struct option write_value_options[] = {
-  {"without-response", 0, 0, 'w'},
-  {"signed-write", 0, 0, 's'},
-  {}
-};
-
 void
 BluetoothLEDevice::write_cb(bool success, uint8_t att_ecode, void * user_data)
 {
@@ -383,11 +349,6 @@ BluetoothLEDevice::write_cb(bool success, uint8_t att_ecode, void * user_data)
     printf("Write failed: %s (0x%02x)\n", bluetooth::utils::to_string(att_ecode), att_ecode);
   }
 }
-
-static struct option write_long_value_options[] = {
-  {"reliable-write", 0, 0, 'r'},
-  {}
-};
 
 void
 BluetoothLEDevice::write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * /*user_data*/)
@@ -402,9 +363,7 @@ BluetoothLEDevice::write_long_cb(bool success, bool reliable_error, uint8_t att_
 }
 
 void
-BluetoothLEDevice::write_long_value(
-      bool reliable_writes, uint16_t handle,
-      uint16_t offset, uint8_t * value, int length)
+BluetoothLEDevice::write_long_value(bool reliable_writes, uint16_t handle, uint16_t offset, uint8_t * value, int length)
 {
   if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
@@ -417,11 +376,6 @@ BluetoothLEDevice::write_long_value(
     printf("Failed to initiate long write procedure\n");
   }
 }
-
-static struct option write_prepare_options[] = {
-  {"session-id", 1, 0, 's'},
-  {}
-};
 
 void
 BluetoothLEDevice::write_prepare(unsigned int id, uint16_t handle, uint16_t offset, uint8_t * value, unsigned int length)
@@ -599,8 +553,6 @@ class BluetoothL2Cap2Socket
 int
 BluetoothLEDevice::l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec)
 {
-  struct bt_security btsec;
-
   char dstaddr_str[18];
   ba2str(dst, dstaddr_str);
 
@@ -638,8 +590,11 @@ BluetoothLEDevice::l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t 
 
   // Set the security level
   struct sockaddr_l2 dstaddr;
+
+  struct bt_security btsec;
   memset(&btsec, 0, sizeof(btsec));
   btsec.level = sec;
+
   if (setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &btsec, sizeof(btsec)) != 0) {
     fprintf(stderr, "BluetoothLEDevice: Failed to set L2CAP security level\n");
     close(sock);
@@ -667,98 +622,22 @@ BluetoothLEDevice::l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t 
 }
 
 void
-BluetoothLEDevice::write_value(char * cmd_str)
+BluetoothLEDevice::write_value(uint16_t handle, uint8_t * value, int length, bool without_response, bool signed_write)
 {
-  int opt;
-  char * argvbuf[516];
-  char ** argv = argvbuf;
-  int argc = 1;
-  char * endptr = nullptr;
-  uint8_t * value = nullptr;
-
-  // printf("cmd_write_value: cmd_str: \"%s\"\n", cmd_str);
-
   if (!bt_gatt_client_is_ready(gatt_)) {
     printf("GATT client not initialized\n");
     return;
   }
 
-  if (!parse_args(cmd_str, 514, argv + 1, &argc)) {
-    printf("Too many arguments\n");
-    return;
-  }
-
-  bool without_response = false;
-  bool signed_write = false;
-
-  optind = 0;
-  argv[0] = (char *) "write-value";
-  while ((opt = getopt_long(argc, argv, "+ws", write_value_options, nullptr)) != -1) {
-    switch (opt) {
-      case 'w':
-        without_response = true;
-        break;
-      case 's':
-        signed_write = true;
-        break;
-      default:
-        return;
-    }
-  }
-
-  argc -= optind;
-  argv += optind;
-
-  if (argc < 1) {
-    return;
-  }
-
-  uint16_t handle = strtol(argv[0], &endptr, 0);
-  if (!endptr || *endptr != '\0' || !handle) {
-    printf("Invalid handle: %s\n", argv[0]);
-    return;
-  }
-
-  int length = argc - 1;
-  if (length > 0) {
-    if (length > UINT16_MAX) {
-      printf("Write value too long\n");
-      return;
-    }
-
-    value = reinterpret_cast<uint8_t *>(malloc(length));
-    if (!value) {
-      printf("Failed to construct write value\n");
-      return;
-    }
-
-    for (int i = 1; i < argc; i++) {
-      value[i - 1] = strtol(argv[i], &endptr, 16);
-      if (endptr == argv[i] || *endptr != '\0' ||
-        errno == ERANGE)
-      {
-        printf(
-          "Invalid value byte: %s\n",
-          argv[i]);
-        goto done;
-      }
-    }
-  }
-
   if (without_response) {
     if (!bt_gatt_client_write_without_response(gatt_, handle, signed_write, value, length)) {
-      printf("Failed to initiate write without response procedure\n");
-      goto done;
+      printf("Failed to initiate write-without-response procedure\n");
     }
-    goto done;
+  } else {
+    if (!bt_gatt_client_write_value(gatt_, handle, value, length, write_cb, nullptr, nullptr)) {
+      printf("Failed to initiate write procedure\n");
+    }
   }
-
-  if (!bt_gatt_client_write_value(gatt_, handle, value, length, write_cb, nullptr, nullptr)) {
-    printf("Failed to initiate write procedure\n");
-  }
-
-done:
-  free(value);
 }
 
 void
