@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BLUETOOTH_BLUETOOTH_LE_DEVICE_HPP_
-#define BLUETOOTH_BLUETOOTH_LE_DEVICE_HPP_
+#ifndef BLUETOOTH_BLUETOOTH_LE_CLIENT_HPP_
+#define BLUETOOTH_BLUETOOTH_LE_CLIENT_HPP_
 
 #include <condition_variable>
 #include <memory>
@@ -33,18 +33,22 @@ extern "C" {
 
 namespace bluetooth {
 
-class BluetoothLEDevice
+class BluetoothLEClient
 {
 public:
-  BluetoothLEDevice(const std::string & device_address, uint8_t dst_type = BDADDR_LE_RANDOM, int sec = BT_SECURITY_LOW, uint16_t mtu = 0);
+  BluetoothLEClient(const std::string & device_address, uint8_t dst_type = BDADDR_LE_RANDOM, int sec = BT_SECURITY_LOW, uint16_t mtu = 0);
   static void ready_cb(bool success, uint8_t att_ecode, void * user_data);
   static void service_added_cb(struct gatt_db_attribute * attr, void * user_data);
   static void service_changed_cb(uint16_t start_handle, uint16_t end_handle, void * user_data);
   static void service_removed_cb(struct gatt_db_attribute * attr, void * user_data);
   static void att_disconnect_cb(int err, void * user_data);
 
-  ~BluetoothLEDevice();
+  ~BluetoothLEClient();
 
+   // #define BT_SECURITY_SDP     0
+   // #define BT_SECURITY_LOW     1
+   // #define BT_SECURITY_MEDIUM  2
+   // #define BT_SECURITY_HIGH    3
   int get_security();
   void set_security(int level);
 
@@ -101,5 +105,5 @@ public:
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_BLUETOOTH_LE_DEVICE_HPP_
+#endif  // BLUETOOTH_BLUETOOTH_LE_CLIENT_HPP_
 

@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <string>
 
-#include "bluetooth/bluetooth_le_device.hpp"
+#include "bluetooth/bluetooth_le_client.hpp"
 #include "util/units.hpp"
 
 namespace jeronibot
@@ -26,7 +26,7 @@ namespace jeronibot
 namespace minipro
 {
 
-class MiniPro : public bluetooth::BluetoothLEDevice
+class MiniPro : public bluetooth::BluetoothLEClient
 {
 public:
   explicit MiniPro(const std::string & bt_address);

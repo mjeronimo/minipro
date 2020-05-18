@@ -22,7 +22,7 @@ namespace minipro
 {
 
 MiniPro::MiniPro(const std::string & bt_addr)
-: BluetoothLEDevice(bt_addr)
+: BluetoothLEClient(bt_addr)
 {
 }
 
