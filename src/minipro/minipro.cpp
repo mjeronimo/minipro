@@ -19,6 +19,8 @@
 #include "minipro/enter_remote_control_mode.hpp"
 #include "minipro/exit_remote_control_mode.hpp"
 
+#include <netinet/in.h>
+
 #include <string>
 #include <vector>
 
@@ -64,17 +66,16 @@ void
 MiniPro::enable_notifications()
 {
   const uint16_t service_handle = 0x000c;
-
-  // TODO: htons
-  uint8_t cmd_buf[2]{0x01, 0x00};
-
-  write_value(service_handle, cmd_buf, sizeof(cmd_buf));
+  uint16_t enable = htons(0x0001);
+  write_value(service_handle, (uint8_t *) &enable, sizeof(enable));
 }
 
 void
 MiniPro::disable_notifications()
 {
-  // TODO(mjeronimo):
+  const uint16_t service_handle = 0x000c;
+  uint16_t enable = htons(0x0000);
+  write_value(service_handle, (uint8_t *) &enable, sizeof(enable));
 }
 
 void
@@ -82,11 +83,7 @@ MiniPro::enter_remote_control_mode()
 {
   packet::EnterRemoteControlMode packet;
   std::vector<uint8_t> bytes = packet.get_bytes();
-
-  const uint16_t service_handle = 0x000e;
-  const bool without_response = true;
-
-  write_value(service_handle, bytes.data(), bytes.size(), without_response);
+  write_value(tx_service_handle, bytes.data(), bytes.size(), true);
 }
 
 void
@@ -94,11 +91,7 @@ MiniPro::exit_remote_control_mode()
 {
   packet::ExitRemoteControlMode packet;
   std::vector<uint8_t> bytes = packet.get_bytes();
-
-  const uint16_t service_handle = 0x000e;
-  const bool without_response = true;
-
-  write_value(service_handle, bytes.data(), bytes.size(), without_response);
+  write_value(tx_service_handle, bytes.data(), bytes.size(), true);
 }
 
 void
@@ -107,29 +100,8 @@ MiniPro::drive(int16_t throttle, int16_t steering)
   packet::Drive packet;
   packet.setThrottle(throttle);
   packet.setSteering(steering);
-
   std::vector<uint8_t> bytes = packet.get_bytes();
-
-
-
-  uint16_t sum = 0x06 + 0xa + 0x03 + 0x7b;
-
-  unsigned char * p_a0 = (unsigned char *) &throttle;
-  sum += p_a0[0] + p_a0[1];
-
-  unsigned char * p_a1 = (unsigned char *) &steering;
-  sum += p_a1[0] + p_a1[1];
-
-  uint16_t checksum = sum ^ 0xffff;
-  unsigned char * p_checksum = (unsigned char *) &checksum;
-
-  // TODO(mjeronimo): htons, etc.
-  uint8_t cmd_buf[12]{0x55, 0xaa, 0x06, 0x0a, 0x03, 0x7b, p_a0[0], p_a0[1], p_a1[0], p_a1[1], p_checksum[0], p_checksum[1]};
-
-  const uint16_t service_handle = 0x000e;
-  const bool without_response = true;
-
-  write_value(service_handle, cmd_buf, sizeof(cmd_buf), without_response);
+  write_value(tx_service_handle, bytes.data(), bytes.size(), true);
 }
 
 }  // namespace minipro

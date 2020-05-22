@@ -43,6 +43,9 @@ public:
   void enter_remote_control_mode();
   void drive(int16_t throttle, int16_t steering);
   void exit_remote_control_mode();
+
+protected:
+  const uint16_t tx_service_handle{0x00e};
 };
 
 }  // namespace minipro
