@@ -13,8 +13,12 @@
 // limitations under the License.
 
 #include "minipro/minipro.hpp"
+#include "minipro/packet.hpp"
+
+#include "minipro/enter_remote_control.hpp"
 
 #include <string>
+#include <vector>
 
 namespace jeronibot
 {
@@ -57,9 +61,9 @@ MiniPro::get_vehicle_temperature()
 void
 MiniPro::enable_notifications()
 {
-  uint16_t handle = 0x000c;
+  uint16_t service_handle = 0x000c;
   uint8_t cmd_buf[2]{0x01, 0x00};
-  write_value(handle, cmd_buf, sizeof(cmd_buf));
+  write_value(service_handle, cmd_buf, sizeof(cmd_buf));
 }
 
 void
@@ -73,20 +77,28 @@ MiniPro::disable_notifications()
 void
 MiniPro::enter_remote_control_mode()
 {
-  uint16_t handle = 0x000e;
-  uint8_t cmd_buf[10]{0x55, 0xaa, 0x04, 0x0a, 0x03, 0x7a, 0x01, 0x00, 0x73, 0xff};
+  packet::EnterRemoteControl packet;
+  std::vector<uint8_t> buffer = packet.get_buffer();
+  buffer.data();
+  buffer.size();
+
+  uint16_t service_handle = 0x000e;
+  std::vector<uint8_t> bytes{0x55, 0xaa, 0x04, 0x0a, 0x03, 0x7a, 0x01, 0x00, 0x73, 0xff};
   bool without_response = true;
-  write_value(handle, cmd_buf, sizeof(cmd_buf), without_response);
+  write_value(service_handle, bytes.data(), bytes.size(), without_response);
+
+  // uint8_t cmd_buf[10]{0x55, 0xaa, 0x04, 0x0a, 0x03, 0x7a, 0x01, 0x00, 0x73, 0xff};
+  // write_value(service_handle, cmd_buf, sizeof(cmd_buf), without_response);
 }
 
 void
 MiniPro::exit_remote_control_mode()
 {
   // TODO(mjeronimo):
-  //uint16_t handle = 0x000e;
+  //uint16_t service_handle = 0x000e;
   //uint8_t cmd_buf[10]{0x55, 0xaa, 0x04, 0x0a, 0x03, 0x7a, 0x01, 0x00, 0x73, 0xff};
   //bool without_response = true;
-  //write_value(handle, cmd_buf, sizeof(cmd_buf), without_response);
+  //write_value(service_handle, cmd_buf, sizeof(cmd_buf), without_response);
 }
 
 void
@@ -105,9 +117,9 @@ MiniPro::drive(int16_t throttle, int16_t steering)
 
   // TODO(mjeronimo): htons, etc.
   uint8_t cmd_buf[12]{0x55, 0xaa, 0x06, 0x0a, 0x03, 0x7b, p_a0[0], p_a0[1], p_a1[0], p_a1[1], p_checksum[0], p_checksum[1]};
-  uint16_t handle = 0x000e;
+  uint16_t service_handle = 0x000e;
   bool without_response = true;
-  write_value(handle, cmd_buf, sizeof(cmd_buf), without_response);
+  write_value(service_handle, cmd_buf, sizeof(cmd_buf), without_response);
 }
 
 }  // namespace minipro

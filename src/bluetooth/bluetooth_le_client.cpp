@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <future>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -222,6 +223,8 @@ BluetoothLEClient::ready_cb(bool success, uint8_t att_ecode, void * user_data)
 {
   BluetoothLEClient * This = (BluetoothLEClient *) user_data;
 
+// TODO: sucess == false on disconnect?
+
   if (!success) {
     printf("GATT discovery procedures failed - error code: 0x%02x\n", att_ecode);
     return;
@@ -264,10 +267,6 @@ BluetoothLEClient::read_multiple_cb(
 void
 BluetoothLEClient::read_multiple(uint16_t * handles, uint8_t num_handles)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   if (!bt_gatt_client_read_multiple(gatt_, handles, num_handles, read_multiple_cb, nullptr, nullptr)) {
     printf("Failed to initiate read multiple procedure\n");
   }
@@ -298,10 +297,6 @@ BluetoothLEClient::read_cb(bool success, uint8_t att_ecode, const uint8_t * valu
 void
 BluetoothLEClient::read_value(uint16_t handle)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   if (!bt_gatt_client_read_value(gatt_, handle, read_cb, nullptr, nullptr)) {
     printf("Failed to initiate read value\n");
   }
@@ -310,81 +305,80 @@ BluetoothLEClient::read_value(uint16_t handle)
 void
 BluetoothLEClient::read_long_value(uint16_t handle, uint16_t offset)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   if (!bt_gatt_client_read_long_value(gatt_, handle, offset, read_cb, nullptr, nullptr)) {
     printf("Failed to initiate read long value\n");
   }
 }
 
 void
-BluetoothLEClient::write_cb(bool success, uint8_t att_ecode, void * user_data)
+BluetoothLEClient::write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * user_data)
 {
-  if (!success) {
-    printf("Write failed: %s (0x%02x)\n", bluetooth::utils::to_string(att_ecode), att_ecode);
-  }
-}
-
-void
-BluetoothLEClient::write_long_cb(bool success, bool reliable_error, uint8_t att_ecode, void * /*user_data*/)
-{
+  std::promise<int> * promise = (std::promise<int> *) user_data;
   if (success) {
-    // printf("Write successful\n");
+    promise->set_value(0);
   } else if (reliable_error) {
     printf("Reliable write not verified\n");
   } else {
-    printf("Write failed: %s (0x%02x)\n", bluetooth::utils::to_string(att_ecode), att_ecode);
+    promise->set_value(att_ecode);
   }
 }
 
 void
 BluetoothLEClient::write_long_value(bool reliable_writes, uint16_t handle, uint16_t offset, uint8_t * value, int length)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
+  std::promise<int> promise;
+  if (!bt_gatt_client_write_long_value(gatt_, reliable_writes, handle,
+      offset, value, length, write_long_cb, (void *) &promise, nullptr))
+  {
+    printf("Failed to initiate bt_gatt_client_write_long_value\n");
   }
 
-  if (!bt_gatt_client_write_long_value(gatt_, reliable_writes, handle,
-      offset, value, length, write_long_cb, nullptr, nullptr))
-  {
-    printf("Failed to initiate long write procedure\n");
+  std::future<int> future = promise.get_future();
+  int rc = future.get();
+  if (rc != 0) {
+    printf("bt_gatt_client_write_long_value failed: %s (0x%02x)\n", bluetooth::utils::to_string(rc), rc);
   }
 }
 
 void
 BluetoothLEClient::write_prepare(unsigned int id, uint16_t handle, uint16_t offset, uint8_t * value, unsigned int length)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   if (reliable_session_id_ != id) {
     printf("Session id != Ongoing session id (%u!=%u)\n", id, reliable_session_id_);
     return;
   }
 
   reliable_session_id_ = bt_gatt_client_prepare_write(gatt_, id, handle, offset, value, length,
-      write_long_cb, nullptr, nullptr);
+      // write_long_cb, nullptr, nullptr);
+      nullptr, nullptr, nullptr);
 
   if (!reliable_session_id_) {
     printf("Failed to proceed prepare write\n");
-  } else {
-    printf("Prepare write success.\nSession id: %d to be used on next write\n", reliable_session_id_);
   }
+
+  printf("Prepare write success.\nSession id: %d to be used on next write\n", reliable_session_id_);
+}
+
+void
+BluetoothLEClient::write_cb(bool success, uint8_t att_ecode, void * user_data)
+{
+  std::promise<int> * promise = (std::promise<int> *) user_data;
+  promise->set_value(success? 0 : att_ecode);
 }
 
 void
 BluetoothLEClient::write_execute(unsigned int session_id, bool execute)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   if (execute) {
-    if (!bt_gatt_client_write_execute(gatt_, session_id, write_cb, nullptr, nullptr)) {
+    std::promise<int> promise;
+    if (!bt_gatt_client_write_execute(gatt_, session_id, write_cb, (void *) &promise, nullptr)) {
       printf("Failed to proceed write execute\n");
+    }
+
+    std::future<int> future = promise.get_future();
+    int rc = future.get();
+    if (rc != 0) {
+      printf("Write failed: %s (0x%02x)\n", bluetooth::utils::to_string(rc), rc);
     }
   } else {
     bt_gatt_client_cancel(gatt_, session_id);
@@ -429,10 +423,6 @@ BluetoothLEClient::register_notify_cb(uint16_t att_ecode, void * /*user_data*/)
 void
 BluetoothLEClient::register_notify(uint16_t value_handle)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   unsigned int id = bt_gatt_client_register_notify(
     gatt_, value_handle, register_notify_cb, notify_cb, nullptr, nullptr);
 
@@ -445,10 +435,6 @@ BluetoothLEClient::register_notify(uint16_t value_handle)
 void
 BluetoothLEClient::unregister_notify(unsigned int id)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   if (!bt_gatt_client_unregister_notify(gatt_, id)) {
     printf("Failed to unregister notify handler with id: %u\n", id);
   }
@@ -457,10 +443,6 @@ BluetoothLEClient::unregister_notify(unsigned int id)
 void
 BluetoothLEClient::set_security(int level)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   if (level < 1 || level > 3) {
     printf("Invalid level: %d\n", level);
     return;
@@ -474,10 +456,6 @@ BluetoothLEClient::set_security(int level)
 int
 BluetoothLEClient::get_security()
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   return bt_gatt_client_get_security(gatt_);
 }
 
@@ -578,17 +556,20 @@ BluetoothLEClient::l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t 
 void
 BluetoothLEClient::write_value(uint16_t handle, uint8_t * value, int length, bool without_response, bool signed_write)
 {
-  if (!bt_gatt_client_is_ready(gatt_)) {
-    throw std::runtime_error("GATT client not initialized");
-  }
-
   if (without_response) {
     if (!bt_gatt_client_write_without_response(gatt_, handle, signed_write, value, length)) {
       printf("Failed to initiate write-without-response procedure\n");
     }
   } else {
-    if (!bt_gatt_client_write_value(gatt_, handle, value, length, write_cb, nullptr, nullptr)) {
+    std::promise<int> promise;
+    if (!bt_gatt_client_write_value(gatt_, handle, value, length, write_cb, (void *) &promise, nullptr)) {
       printf("Failed to initiate write procedure\n");
+    }
+
+    std::future<int> future = promise.get_future();
+    int rc = future.get();
+    if (rc != 0) {
+      printf("write_value failed\n");
     }
   }
 }
