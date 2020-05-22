@@ -30,6 +30,8 @@ add_library(bluez STATIC
 
 #add_library(minipro STATIC
 #  src/minipro/minipro.cpp
+#  src/minipro/packet.cpp
+#  src/minipro/enter_remote_control.cpp
 #)
 
 #add_library(bluetooth STATIC
