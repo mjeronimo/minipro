@@ -15,7 +15,9 @@
 #include "minipro/minipro.hpp"
 #include "minipro/packet.hpp"
 
-#include "minipro/enter_remote_control.hpp"
+#include "minipro/drive.hpp"
+#include "minipro/enter_remote_control_mode.hpp"
+#include "minipro/exit_remote_control_mode.hpp"
 
 #include <string>
 #include <vector>
@@ -62,7 +64,10 @@ void
 MiniPro::enable_notifications()
 {
   uint16_t service_handle = 0x000c;
+
+  // TODO: htons
   uint8_t cmd_buf[2]{0x01, 0x00};
+
   write_value(service_handle, cmd_buf, sizeof(cmd_buf));
 }
 
@@ -70,40 +75,41 @@ void
 MiniPro::disable_notifications()
 {
   // TODO(mjeronimo):
-  // char enable_notifications_cmd[] = "0x000c 01 00";
-  // write_value(enable_notifications_cmd);
 }
 
 void
 MiniPro::enter_remote_control_mode()
 {
-  packet::EnterRemoteControl packet;
-  std::vector<uint8_t> buffer = packet.get_buffer();
-  buffer.data();
-  buffer.size();
+  packet::EnterRemoteControlMode packet;
+  std::vector<uint8_t> bytes = packet.get_bytes();
 
   uint16_t service_handle = 0x000e;
-  std::vector<uint8_t> bytes{0x55, 0xaa, 0x04, 0x0a, 0x03, 0x7a, 0x01, 0x00, 0x73, 0xff};
   bool without_response = true;
-  write_value(service_handle, bytes.data(), bytes.size(), without_response);
 
-  // uint8_t cmd_buf[10]{0x55, 0xaa, 0x04, 0x0a, 0x03, 0x7a, 0x01, 0x00, 0x73, 0xff};
-  // write_value(service_handle, cmd_buf, sizeof(cmd_buf), without_response);
+  write_value(service_handle, bytes.data(), bytes.size(), without_response);
 }
 
 void
 MiniPro::exit_remote_control_mode()
 {
-  // TODO(mjeronimo):
-  //uint16_t service_handle = 0x000e;
-  //uint8_t cmd_buf[10]{0x55, 0xaa, 0x04, 0x0a, 0x03, 0x7a, 0x01, 0x00, 0x73, 0xff};
-  //bool without_response = true;
-  //write_value(service_handle, cmd_buf, sizeof(cmd_buf), without_response);
+  packet::ExitRemoteControlMode packet;
+  std::vector<uint8_t> bytes = packet.get_bytes();
+
+  uint16_t service_handle = 0x000e;
+  bool without_response = true;
+
+  write_value(service_handle, bytes.data(), bytes.size(), without_response);
 }
 
 void
 MiniPro::drive(int16_t throttle, int16_t steering)
 {
+  packet::Drive packet;
+  // packet.setThrottle(throttle);
+  // packet.setSteering(steering);
+  
+  std::vector<uint8_t> bytes = packet.get_bytes();
+
   uint16_t sum = 0x06 + 0xa + 0x03 + 0x7b;
 
   unsigned char * p_a0 = (unsigned char *) &throttle;
@@ -117,8 +123,10 @@ MiniPro::drive(int16_t throttle, int16_t steering)
 
   // TODO(mjeronimo): htons, etc.
   uint8_t cmd_buf[12]{0x55, 0xaa, 0x06, 0x0a, 0x03, 0x7b, p_a0[0], p_a0[1], p_a1[0], p_a1[1], p_checksum[0], p_checksum[1]};
+
   uint16_t service_handle = 0x000e;
   bool without_response = true;
+
   write_value(service_handle, cmd_buf, sizeof(cmd_buf), without_response);
 }
 

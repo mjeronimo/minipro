@@ -14,6 +14,8 @@
 
 #include "minipro/packet.hpp"
 
+#include <netinet/in.h>
+
 namespace jeronibot
 {
 namespace minipro
@@ -26,15 +28,36 @@ Packet::Packet()
 }
 
 std::vector<uint8_t>
-Packet::get_buffer()
+Packet::get_bytes()
 {
-  std::vector<uint8_t> tmp;
-  return tmp;
-}
+  // Calculate length and checksum
+  length_ = payload_.size() + sizeof(checksum_);
 
-void
-Packet::calculate_checksum()
-{
+  uint16_t sum = length_ + type_ + operation_ + parameter_;
+  for (uint8_t val : payload_) {
+    sum += val;
+  }
+  uint16_t checksum = sum ^ 0xffff;
+
+  // Compose the packet and return the result
+  std::vector<uint8_t> bytes;
+
+  uint16_t header = htons(header_);
+  uint8_t *p = (uint8_t *) &header;
+  bytes.push_back(*p++);
+  bytes.push_back(*p);
+  bytes.push_back(length_);
+  bytes.push_back(type_);
+  bytes.push_back(operation_);
+  bytes.push_back(parameter_);
+  for (uint8_t val : payload_) {
+    bytes.push_back(val);
+  }
+  p = (uint8_t *) &checksum;
+  bytes.push_back(*p++);
+  bytes.push_back(*p);
+
+  return bytes;
 }
 
 }  // namespace packet

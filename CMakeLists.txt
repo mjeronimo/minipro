@@ -31,7 +31,9 @@ add_library(bluez STATIC
 #add_library(minipro STATIC
 #  src/minipro/minipro.cpp
 #  src/minipro/packet.cpp
-#  src/minipro/enter_remote_control.cpp
+#  src/minipro/drive.cpp
+#  src/minipro/enter_remote_control_mode.cpp
+#  src/minipro/exit_remote_control_mode.cpp
 #)
 
 #add_library(bluetooth STATIC
@@ -52,7 +54,9 @@ target_include_directories(gattclient PUBLIC lib/bluez)
 add_executable(t_minipro ${BLUEZ_SRC}
   src/minipro/minipro.cpp
   src/minipro/packet.cpp
-  src/minipro/enter_remote_control.cpp
+  src/minipro/drive.cpp
+  src/minipro/enter_remote_control_mode.cpp
+  src/minipro/exit_remote_control_mode.cpp
   src/bluetooth/bluetooth_le_client.cpp
   src/bluetooth/utils.cpp
   src/util/xbox360_controller.cpp

@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MINIPRO__MINIPRO_ENTER_REMOTE_CONTROL_HPP_
-#define MINIPRO__MINIPRO_ENTER_REMOTE_CONTROL_HPP_
+#ifndef MINIPRO__MINIPRO_DRIVE_HPP_
+#define MINIPRO__MINIPRO_DRIVE_HPP_
 
 #include "minipro/packet.hpp"
-
-#include <cstdint>
-#include <vector>
 
 namespace jeronibot
 {
@@ -27,15 +24,15 @@ namespace minipro
 namespace packet
 {
 
-class EnterRemoteControl : public Packet
+class Drive : public Packet
 {
 public:
-  EnterRemoteControl();
+  Drive();
 };
 
 }  // namespace packet
 }  // namespace minipro
 }  // namespace jeronibot
 
-#endif  // MINIPRO__MINIPRO_ENTER_REMOTE_CONTROL_HPP_
+#endif  // MINIPRO__MINIPRO_DRIVE_HPP_
 

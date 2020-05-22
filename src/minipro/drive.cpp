@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "minipro/enter_remote_control.hpp"
+#include "minipro/drive.hpp"
+
+#include <netinet/in.h>
 
 namespace jeronibot
 {
@@ -21,10 +23,15 @@ namespace minipro
 namespace packet
 {
 
-EnterRemoteControl::EnterRemoteControl()
+Drive::Drive()
 {
-  data_.push_back(0x01);
-  length_ = 0x04;
+  type_ = Command;
+  operation_ = ControlDriveBase;
+  parameter_ = SetDrive;
+
+  for (int i=0; i<4; i++) {
+    payload_.push_back(0);
+  }
 }
 
 }  // namespace packet

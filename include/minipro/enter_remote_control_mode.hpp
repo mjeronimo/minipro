@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MINIPRO__MINIPRO_PACKET_HPP_
-#define MINIPRO__MINIPRO_PACKET_HPP_
+#ifndef MINIPRO__MINIPRO_ENTER_REMOTE_CONTROL_MODE_HPP_
+#define MINIPRO__MINIPRO_ENTER_REMOTE_CONTROL_MODE_HPP_
 
-#include <cstdint>
-#include <vector>
+#include "minipro/packet.hpp"
 
 namespace jeronibot
 {
@@ -25,29 +24,15 @@ namespace minipro
 namespace packet
 {
 
-class Packet
+class EnterRemoteControlMode : public Packet
 {
 public:
-  Packet();
-
-  std::vector<uint8_t> get_bytes();
-
-protected:
-  enum packet_type : uint8_t { Command = 0xa, Notification = 0xd };
-  enum operation : uint8_t { GetSetValue = 0x01, ControlDriveBase = 0x03 };
-  enum parameter : uint8_t { EnableRemoteControl = 0x7a, SetDrive = 0x7b };
-
-  const uint16_t header_{ 0x55aa };
-  uint8_t length_{0};
-  uint8_t type_{0};
-  uint8_t operation_{0};
-  uint8_t parameter_{0};
-  std::vector<uint8_t> payload_;
-  uint16_t checksum_{0};
+  EnterRemoteControlMode();
 };
 
 }  // namespace packet
 }  // namespace minipro
 }  // namespace jeronibot
 
-#endif  // MINIPRO__MINIPRO_PACKET_HPP_
+#endif  // MINIPRO__MINIPRO_ENTER_REMOTE_CONTROL_MODE_HPP_
+
