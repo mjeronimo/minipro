@@ -63,7 +63,7 @@ MiniPro::get_vehicle_temperature()
 void
 MiniPro::enable_notifications()
 {
-  uint16_t service_handle = 0x000c;
+  const uint16_t service_handle = 0x000c;
 
   // TODO: htons
   uint8_t cmd_buf[2]{0x01, 0x00};
@@ -83,8 +83,8 @@ MiniPro::enter_remote_control_mode()
   packet::EnterRemoteControlMode packet;
   std::vector<uint8_t> bytes = packet.get_bytes();
 
-  uint16_t service_handle = 0x000e;
-  bool without_response = true;
+  const uint16_t service_handle = 0x000e;
+  const bool without_response = true;
 
   write_value(service_handle, bytes.data(), bytes.size(), without_response);
 }
@@ -95,8 +95,8 @@ MiniPro::exit_remote_control_mode()
   packet::ExitRemoteControlMode packet;
   std::vector<uint8_t> bytes = packet.get_bytes();
 
-  uint16_t service_handle = 0x000e;
-  bool without_response = true;
+  const uint16_t service_handle = 0x000e;
+  const bool without_response = true;
 
   write_value(service_handle, bytes.data(), bytes.size(), without_response);
 }
@@ -105,10 +105,12 @@ void
 MiniPro::drive(int16_t throttle, int16_t steering)
 {
   packet::Drive packet;
-  // packet.setThrottle(throttle);
-  // packet.setSteering(steering);
-  
+  packet.setThrottle(throttle);
+  packet.setSteering(steering);
+
   std::vector<uint8_t> bytes = packet.get_bytes();
+
+
 
   uint16_t sum = 0x06 + 0xa + 0x03 + 0x7b;
 
@@ -124,8 +126,8 @@ MiniPro::drive(int16_t throttle, int16_t steering)
   // TODO(mjeronimo): htons, etc.
   uint8_t cmd_buf[12]{0x55, 0xaa, 0x06, 0x0a, 0x03, 0x7b, p_a0[0], p_a0[1], p_a1[0], p_a1[1], p_checksum[0], p_checksum[1]};
 
-  uint16_t service_handle = 0x000e;
-  bool without_response = true;
+  const uint16_t service_handle = 0x000e;
+  const bool without_response = true;
 
   write_value(service_handle, cmd_buf, sizeof(cmd_buf), without_response);
 }

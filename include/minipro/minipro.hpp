@@ -41,9 +41,8 @@ public:
   void disable_notifications();
 
   void enter_remote_control_mode();
-  void exit_remote_control_mode();
-
   void drive(int16_t throttle, int16_t steering);
+  void exit_remote_control_mode();
 };
 
 }  // namespace minipro

@@ -34,6 +34,26 @@ Drive::Drive()
   }
 }
 
+void
+Drive::setThrottle(uint16_t throttle)
+{
+  uint16_t value = htons(throttle);
+  uint8_t * p = (uint8_t *) &value;
+
+  payload_[0] = *p++;
+  payload_[1] = *p;
+}
+
+void
+Drive::setSteering(uint16_t steering)
+{
+  uint16_t value = htons(steering);
+  uint8_t * p = (uint8_t *) &value;
+
+  payload_[3] = *p++;
+  payload_[4] = *p;
+}
+
 }  // namespace packet
 }  // namespace minipro
 }  // namespace jeronibot

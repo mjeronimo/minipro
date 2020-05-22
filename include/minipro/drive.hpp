@@ -15,6 +15,8 @@
 #ifndef MINIPRO__MINIPRO_DRIVE_HPP_
 #define MINIPRO__MINIPRO_DRIVE_HPP_
 
+#include <cstdint>
+
 #include "minipro/packet.hpp"
 
 namespace jeronibot
@@ -28,6 +30,9 @@ class Drive : public Packet
 {
 public:
   Drive();
+
+  void setThrottle(uint16_t throttle);
+  void setSteering(uint16_t steering);
 };
 
 }  // namespace packet
