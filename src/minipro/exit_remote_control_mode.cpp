@@ -29,7 +29,7 @@ ExitRemoteControlMode::ExitRemoteControlMode()
   operation_ = ControlDriveBase;
   parameter_ = EnableRemoteControl;
 
-  uint16_t enable = 0;
+  uint16_t enable = htons(0x0000);
   uint8_t * p = (uint8_t *) &enable;
 
   payload_.push_back(*p++);

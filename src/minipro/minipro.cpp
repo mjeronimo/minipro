@@ -82,16 +82,14 @@ void
 MiniPro::enter_remote_control_mode()
 {
   packet::EnterRemoteControlMode packet;
-  std::vector<uint8_t> bytes = packet.get_bytes();
-  write_value(tx_service_handle, bytes.data(), bytes.size(), true);
+  send_packet(packet);
 }
 
 void
 MiniPro::exit_remote_control_mode()
 {
   packet::ExitRemoteControlMode packet;
-  std::vector<uint8_t> bytes = packet.get_bytes();
-  write_value(tx_service_handle, bytes.data(), bytes.size(), true);
+  send_packet(packet);
 }
 
 void
@@ -100,8 +98,14 @@ MiniPro::drive(int16_t throttle, int16_t steering)
   packet::Drive packet;
   packet.setThrottle(throttle);
   packet.setSteering(steering);
+  send_packet(packet);
+}
+
+void
+MiniPro::send_packet(packet::Packet & packet)
+{
   std::vector<uint8_t> bytes = packet.get_bytes();
-  write_value(tx_service_handle, bytes.data(), bytes.size(), true);
+  write_value(tx_service_handle_, bytes.data(), bytes.size(), true);
 }
 
 }  // namespace minipro

@@ -17,8 +17,10 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "bluetooth/bluetooth_le_client.hpp"
+#include "minipro/packet.hpp"
 #include "util/units.hpp"
 
 namespace jeronibot
@@ -45,7 +47,8 @@ public:
   void exit_remote_control_mode();
 
 protected:
-  const uint16_t tx_service_handle{0x00e};
+  void send_packet(packet::Packet & packet);
+  const uint16_t tx_service_handle_{0x00e};
 };
 
 }  // namespace minipro
