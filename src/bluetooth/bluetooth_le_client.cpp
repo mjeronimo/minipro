@@ -55,36 +55,36 @@ BluetoothLEClient::BluetoothLEClient(const std::string & device_address, uint8_t
 
   att_ = bt_att_new(fd_, false);
   if (!att_) {
-    fprintf(stderr, "Failed to initialize ATT transport layer\n");
     bt_att_unref(att_);
+    fprintf(stderr, "Failed to initialize ATT transport layer\n");
     return;
   }
 
   if (!bt_att_set_close_on_unref(att_, true)) {
-    fprintf(stderr, "Failed to set up ATT transport layer\n");
     bt_att_unref(att_);
+    fprintf(stderr, "Failed to set up ATT transport layer\n");
     return;
   }
 
   if (!bt_att_register_disconnect(att_, BluetoothLEClient::att_disconnect_cb, nullptr, nullptr)) {
-    fprintf(stderr, "Failed to set ATT disconnect handler\n");
     bt_att_unref(att_);
+    fprintf(stderr, "Failed to set ATT disconnect handler\n");
     return;
   }
 
   // class bluetooth GattClient
   db_ = gatt_db_new();
   if (!db_) {
-    fprintf(stderr, "Failed to create GATT database\n");
     bt_att_unref(att_);
+    fprintf(stderr, "Failed to create GATT database\n");
     return;
   }
 
   gatt_ = bt_gatt_client_new(db_, att_, mtu);
   if (!gatt_) {
-    fprintf(stderr, "Failed to create GATT client\n");
     gatt_db_unref(db_);
     bt_att_unref(att_);
+    fprintf(stderr, "Failed to create GATT client\n");
     return;
   }
 

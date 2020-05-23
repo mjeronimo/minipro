@@ -28,49 +28,35 @@ add_library(bluez STATIC
   lib/bluez/uuid.c
 )
 
-#add_library(minipro STATIC
-#  src/minipro/minipro.cpp
-#  src/minipro/packet.cpp
-#  src/minipro/drive.cpp
-#  src/minipro/enter_remote_control_mode.cpp
-#  src/minipro/exit_remote_control_mode.cpp
-#)
-
-#add_library(bluetooth STATIC
-#  src/bluetooth/bluetooth_le_client.cpp
-#  src/bluetooth/utils.cpp
-#)
-
-#add_library(util STATIC
-#  src/util/xbox360_controller.cpp
-#  src/util/joystick.cpp
-#  src/util/loop_rate.cpp
-#)
-
-add_executable(gattclient ${BLUEZ_SRC} lib/bluez/btgattclient.c)
-target_link_libraries(gattclient bluez ${GLIB_LDFLAGS})
-target_include_directories(gattclient PUBLIC lib/bluez)
-
-add_executable(t_minipro ${BLUEZ_SRC}
+add_library(minipro STATIC
   src/minipro/minipro.cpp
   src/minipro/packet.cpp
   src/minipro/drive.cpp
   src/minipro/enter_remote_control_mode.cpp
   src/minipro/exit_remote_control_mode.cpp
+)
+target_include_directories(minipro PUBLIC lib/bluez)
+
+add_library(bluetooth STATIC
   src/bluetooth/bluetooth_le_client.cpp
   src/bluetooth/utils.cpp
-  src/util/xbox360_controller.cpp
-  src/util/joystick.cpp
-  src/util/loop_rate.cpp
-  test/minipro/main.cpp 
 )
-target_link_libraries(t_minipro bluez ${GLIB_LDFLAGS} pthread)
-target_include_directories(t_minipro PUBLIC lib/bluez src/util)
+target_include_directories(bluetooth PUBLIC lib/bluez)
 
-add_executable(t_joystick
+add_library(util STATIC
   src/util/xbox360_controller.cpp
   src/util/joystick.cpp
   src/util/loop_rate.cpp
-  test/joystick/main.cpp
 )
-target_link_libraries(t_joystick pthread)
+
+add_executable(gattclient ${BLUEZ_SRC} lib/bluez/btgattclient.c)
+target_link_libraries(gattclient bluez ${GLIB_LDFLAGS})
+target_include_directories(gattclient PUBLIC lib/bluez)
+
+add_executable(t_minipro ${BLUEZ_SRC} test/minipro/t_minipro.cpp )
+target_link_libraries(t_minipro minipro bluetooth util bluez ${GLIB_LDFLAGS} pthread)
+target_include_directories(t_minipro PUBLIC lib/bluez)
+
+add_executable(t_joystick test/joystick/t_joystick.cpp)
+target_link_libraries(t_joystick util pthread)
+

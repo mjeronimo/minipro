@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "minipro/minipro.hpp"
-#include "minipro/packet.hpp"
 
 #include "minipro/drive.hpp"
 #include "minipro/enter_remote_control_mode.hpp"
 #include "minipro/exit_remote_control_mode.hpp"
+#include "minipro/packet.hpp"
 
 #include <netinet/in.h>
 
