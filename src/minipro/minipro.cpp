@@ -77,7 +77,6 @@ MiniPro::enter_remote_control_mode()
 {
   packet::EnterRemoteControlMode packet;
   send_packet(packet);
-  printf("enter_remote_control_mode\n");
 }
 
 void
@@ -90,7 +89,6 @@ MiniPro::exit_remote_control_mode()
 void
 MiniPro::drive(int16_t throttle, int16_t steering)
 {
-  printf("drive\n");
   packet::Drive packet(throttle, steering);
   send_packet(packet);
 }

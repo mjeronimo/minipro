@@ -22,7 +22,7 @@ namespace jeronibot::minipro::packet
 ExitRemoteControlMode::ExitRemoteControlMode()
 : Packet(Command, ControlDriveBase, EnableRemoteControl)
 {
-  uint16_t enable = htons(0x0000);
+  uint16_t enable = 0x0000;
   uint8_t * p = (uint8_t *) &enable;
 
   payload_.push_back(*p++);

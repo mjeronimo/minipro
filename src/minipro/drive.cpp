@@ -22,13 +22,11 @@ namespace jeronibot::minipro::packet
 Drive::Drive(uint16_t throttle, uint16_t steering)
 : Packet(Command, ControlDriveBase, SetDrive)
 {
-  uint16_t value = htons(throttle);
-  uint8_t * p = (uint8_t *) &value;
+  uint8_t * p = (uint8_t *) &throttle;
   payload_.push_back(*p++);
   payload_.push_back(*p);
 
-  value = htons(steering);
-  p = (uint8_t *) &value;
+  p = (uint8_t *) &steering;
   payload_.push_back(*p++);
   payload_.push_back(*p);
 }

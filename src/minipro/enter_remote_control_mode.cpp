@@ -22,7 +22,7 @@ namespace jeronibot::minipro::packet
 EnterRemoteControlMode::EnterRemoteControlMode()
 : Packet(Command, ControlDriveBase, EnableRemoteControl)
 {
-  uint16_t enable = htons(0x0001);
+  uint16_t enable = 0x0001;
   uint8_t * p = (uint8_t *) &enable;
 
   payload_.push_back(*p++);
