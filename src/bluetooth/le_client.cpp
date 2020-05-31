@@ -102,7 +102,7 @@ LEClient::LEClient(const std::string & device_address, uint8_t dst_type, int sec
   // Wait for client to be ready
   std::unique_lock<std::mutex> lk(mutex_);
   if (cv_.wait_for(lk, 5s, [this] {return ready_;})) {
-    printf("LEClient: Initialized OK\n");
+    printf("LEClient: Ready\n");
   } else {
     throw std::runtime_error("LEClient: Did NOT initialize OK");
   }
@@ -111,9 +111,9 @@ LEClient::LEClient(const std::string & device_address, uint8_t dst_type, int sec
 LEClient::~LEClient()
 {
   mainloop_quit();
-  input_thread_->join();
   bt_gatt_client_unref(gatt_);
   bt_att_unref(att_);
+  input_thread_->join();
 }
 
 void
