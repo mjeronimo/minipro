@@ -27,9 +27,7 @@
 
 #include "util/loop_rate.hpp"
 
-namespace jeronibot
-{
-namespace util
+namespace jeronibot::util
 {
 
 Joystick::Joystick(const std::string & device_name)
@@ -135,5 +133,4 @@ Joystick::input_thread_func()
   }
 }
 
-}  // namespace util
-}  // namespace jeronibot
+}  // namespace jeronibot::util

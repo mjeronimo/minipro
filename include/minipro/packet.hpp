@@ -18,17 +18,13 @@
 #include <cstdint>
 #include <vector>
 
-namespace jeronibot
-{
-namespace minipro
-{
-namespace packet
+namespace jeronibot::minipro::packet
 {
 
 class Packet
 {
 public:
-  Packet();
+  Packet(const uint8_t type, const uint8_t operation, const uint8_t parameter);
 
   std::vector<uint8_t> get_bytes();
 
@@ -39,15 +35,13 @@ protected:
 
   const uint16_t header_{ 0x55aa };
   uint8_t length_{0};
-  uint8_t type_{0};
-  uint8_t operation_{0};
-  uint8_t parameter_{0};
+  const uint8_t type_{0};
+  const uint8_t operation_{0};
+  const uint8_t parameter_{0};
   std::vector<uint8_t> payload_;
   uint16_t checksum_{0};
 };
 
-}  // namespace packet
-}  // namespace minipro
-}  // namespace jeronibot
+}  // namespace jeronibot::minipro::packet
 
 #endif  // MINIPRO__MINIPRO_PACKET_HPP_

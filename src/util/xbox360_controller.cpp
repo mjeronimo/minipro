@@ -16,9 +16,7 @@
 
 #include <string>
 
-namespace jeronibot
-{
-namespace util
+namespace jeronibot::util
 {
 
 XBox360Controller::XBox360Controller(const std::string & device_name)
@@ -31,5 +29,4 @@ XBox360Controller::XBox360Controller()
 {
 }
 
-}  // namespace util
-}  // namespace jeronibot
+}  // namespace jeronibot::util

@@ -12,25 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "minipro/drive.hpp"
+#ifndef BLUETOOTH__L2_CAP_SOCKET_HPP_
+#define BLUETOOTH__L2_CAP_SOCKET_HPP_
 
-#include <netinet/in.h>
+#include <string>
 
-namespace jeronibot::minipro::packet
-{
-
-Drive::Drive(uint16_t throttle, uint16_t steering)
-: Packet(Command, ControlDriveBase, SetDrive)
-{
-  uint16_t value = htons(throttle);
-  uint8_t * p = (uint8_t *) &value;
-  payload_.push_back(*p++);
-  payload_.push_back(*p);
-
-  value = htons(steering);
-  p = (uint8_t *) &value;
-  payload_.push_back(*p++);
-  payload_.push_back(*p);
+extern "C" {
+#include "att.h"
+#include "bluetooth.h"
+#include "uuid.h"
+#include "gatt-db.h"
+#include "gatt-client.h"
 }
 
-}  // namespace jeronibot::minipro::packet
+namespace bluetooth {
+
+class L2CapSocket
+{
+public:
+  L2CapSocket(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type = BDADDR_LE_RANDOM, int sec = BT_SECURITY_LOW);
+  ~L2CapSocket();
+
+  int get_handle() { return fd_; }
+
+protected:
+  int fd_{-1};
+  const int ATT_CID{4};
+};
+
+}  // namespace bluetooth
+
+#endif  // BLUETOOTH__L2_CAP_SOCKET_HPP_
+

@@ -25,8 +25,8 @@
 #include <string>
 #include <thread>
 
-namespace jeronibot {
-namespace util {
+namespace jeronibot::util
+{
 
 typedef struct AxisState {
   int16_t x; 
@@ -63,7 +63,6 @@ protected:
   std::unique_ptr<std::thread> input_thread_;
 };
 
-}  // namespace util
-}  // namespace jeronibot
+}  // namespace jeronibot::util
 
 #endif  // UTIL__JOYSTICK_HPP_

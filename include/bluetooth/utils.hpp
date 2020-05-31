@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BLUETOOTH_UTILS_HPP_
-#define BLUETOOTH_UTILS_HPP_
+#ifndef BLUETOOTH__UTILS_HPP_
+#define BLUETOOTH__UTILS_HPP_
 
 #include <stdint.h>
 
@@ -27,4 +27,4 @@ public:
 
 }
 
-#endif  // BLUETOOTH_UTILS_HPP_
+#endif  // BLUETOOTH__UTILS_HPP_

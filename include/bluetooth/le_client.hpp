@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BLUETOOTH_BLUETOOTH_LE_CLIENT_HPP_
-#define BLUETOOTH_BLUETOOTH_LE_CLIENT_HPP_
+#ifndef BLUETOOTH__LE_CLIENT_HPP_
+#define BLUETOOTH__LE_CLIENT_HPP_
 
 #include <condition_variable>
 #include <memory>
@@ -31,26 +31,26 @@ extern "C" {
 #include "gatt-client.h"
 }
 
+#include "bluetooth/l2_cap_socket.hpp"
+
 namespace bluetooth {
 
-class BluetoothLEClient
+class LEClient
 {
 public:
-  BluetoothLEClient(const std::string & device_address, uint8_t dst_type = BDADDR_LE_RANDOM, int sec = BT_SECURITY_LOW, uint16_t mtu = 0);
+  LEClient(const std::string & device_address, uint8_t dst_type = BDADDR_LE_RANDOM, int sec = BT_SECURITY_LOW, uint16_t mtu = 0);
+
+  // GattClient
   static void ready_cb(bool success, uint8_t att_ecode, void * user_data);
   static void service_added_cb(struct gatt_db_attribute * attr, void * user_data);
   static void service_changed_cb(uint16_t start_handle, uint16_t end_handle, void * user_data);
   static void service_removed_cb(struct gatt_db_attribute * attr, void * user_data);
   static void att_disconnect_cb(int err, void * user_data);
 
-  ~BluetoothLEClient();
+  ~LEClient();
 
-   // #define BT_SECURITY_SDP     0
-   // #define BT_SECURITY_LOW     1
-   // #define BT_SECURITY_MEDIUM  2
-   // #define BT_SECURITY_HIGH    3
   int get_security();
-  void set_security(int level);
+  void set_security(int level);	// BT_SECURITY_SDP, LOW, MEDIUM, HIGH
 
   void read_long_value(uint16_t handle, uint16_t value);
 
@@ -79,12 +79,15 @@ public:
   static void write_cb(bool success, uint8_t att_ecode, void * user_data);
 
 protected:
-  int fd_{-1};                       // Bluetooth socket
+  // Bluetooth socket
+  int fd_{-1};                       
   struct bt_att * att_{nullptr};
+  std::unique_ptr<L2CapSocket> l2_cap_socket_;
+
+  // GattClient
   struct gatt_db * db_{nullptr};
   struct bt_gatt_client * gatt_{nullptr};
   unsigned int reliable_session_id_{0};
-
   void process_input();
   std::unique_ptr<std::thread> input_thread_;
 
@@ -93,9 +96,7 @@ protected:
   bool ready_{false};
 
 public:
-  static int l2cap_le_att_connect(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type, int sec);
-
-  // TODO(mjeronimo): move to utils
+  // TODO(mjeronimo): move to utils (or GattClient)
   static void print_uuid(const bt_uuid_t * uuid);
   static void print_included_data(struct gatt_db_attribute * attr, void * user_data);
   static void print_descriptor(struct gatt_db_attribute * attr, void * user_data);
@@ -105,5 +106,5 @@ public:
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_BLUETOOTH_LE_CLIENT_HPP_
+#endif  // BLUETOOTH__LE_CLIENT_HPP_
 

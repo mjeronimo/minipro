@@ -19,16 +19,14 @@
 #include <string>
 #include <vector>
 
-#include "bluetooth/bluetooth_le_client.hpp"
+#include "bluetooth/le_client.hpp"
 #include "minipro/packet.hpp"
 #include "util/units.hpp"
 
-namespace jeronibot
-{
-namespace minipro
+namespace jeronibot::minipro
 {
 
-class MiniPro : public bluetooth::BluetoothLEClient
+class MiniPro : public bluetooth::LEClient
 {
 public:
   explicit MiniPro(const std::string & bt_address);
@@ -48,10 +46,12 @@ public:
 
 protected:
   void send_packet(packet::Packet & packet);
+  void write_config_value(uint16_t value);
+
+  const uint16_t config_service_handle_{0x000c};
   const uint16_t tx_service_handle_{0x00e};
 };
 
-}  // namespace minipro
-}  // namespace jeronibot
+}  // namespace jeronibot::minipro
 
 #endif  // MINIPRO__MINIPRO_HPP_

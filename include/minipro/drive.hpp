@@ -19,25 +19,17 @@
 
 #include "minipro/packet.hpp"
 
-namespace jeronibot
-{
-namespace minipro
-{
-namespace packet
+namespace jeronibot::minipro::packet
 {
 
 class Drive : public Packet
 {
 public:
-  Drive();
-
-  void setThrottle(uint16_t throttle);
-  void setSteering(uint16_t steering);
+  Drive(uint16_t throttle, uint16_t steering);
+  Drive() = delete;
 };
 
-}  // namespace packet
-}  // namespace minipro
-}  // namespace jeronibot
+}  // namespace jeronibot::minipro::packet
 
 #endif  // MINIPRO__MINIPRO_DRIVE_HPP_
 

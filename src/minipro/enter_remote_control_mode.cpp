@@ -16,19 +16,12 @@
 
 #include <netinet/in.h>
 
-namespace jeronibot
-{
-namespace minipro
-{
-namespace packet
+namespace jeronibot::minipro::packet
 {
 
 EnterRemoteControlMode::EnterRemoteControlMode()
+: Packet(Command, ControlDriveBase, EnableRemoteControl)
 {
-  type_ = Command;
-  operation_ = ControlDriveBase;
-  parameter_ = EnableRemoteControl;
-
   uint16_t enable = htons(0x0001);
   uint8_t * p = (uint8_t *) &enable;
 
@@ -36,6 +29,4 @@ EnterRemoteControlMode::EnterRemoteControlMode()
   payload_.push_back(*p);
 }
 
-}  // namespace packet
-}  // namespace minipro
-}  // namespace jeronibot
+}  // namespace jeronibot::minipro::packet

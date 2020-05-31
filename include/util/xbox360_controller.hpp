@@ -17,9 +17,7 @@
 
 #include "util/joystick.hpp"
 
-namespace jeronibot
-{
-namespace util
+namespace jeronibot::util
 {
 
 class XBox360Controller : public Joystick
@@ -46,7 +44,6 @@ public:
   static const uint8_t Axis_Digipad = 3;
 };
 
-}  // namespace util
-}  // namespace jeronibot
+}  // namespace jeronibot::util
 
 #endif  // UTIL_XBOX360_CONTROLLER_HPP_

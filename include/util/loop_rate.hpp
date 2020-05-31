@@ -19,8 +19,8 @@
 
 #include "util/units.hpp"
 
-namespace jeronibot {
-namespace util {
+namespace jeronibot::util
+{
 
 class LoopRate
 {
@@ -37,7 +37,6 @@ protected:
   std::chrono::milliseconds period_{0};
 };
 
-}  // namespace util
-}  // namespace jeronibot
+}  // namespace jeronibot::util
 
 #endif  // UTIL__LOOP_RATE_HPP_

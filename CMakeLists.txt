@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(minipro)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -38,7 +38,8 @@ add_library(minipro STATIC
 target_include_directories(minipro PUBLIC lib/bluez)
 
 add_library(bluetooth STATIC
-  src/bluetooth/bluetooth_le_client.cpp
+  src/bluetooth/le_client.cpp
+  src/bluetooth/l2_cap_socket.cpp
   src/bluetooth/utils.cpp
 )
 target_include_directories(bluetooth PUBLIC lib/bluez)

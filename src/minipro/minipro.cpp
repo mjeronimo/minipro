@@ -24,13 +24,11 @@
 #include <string>
 #include <vector>
 
-namespace jeronibot
-{
-namespace minipro
+namespace jeronibot::minipro
 {
 
 MiniPro::MiniPro(const std::string & bt_addr)
-: BluetoothLEClient(bt_addr)
+: LEClient(bt_addr)
 {
 }
 
@@ -65,17 +63,13 @@ MiniPro::get_vehicle_temperature()
 void
 MiniPro::enable_notifications()
 {
-  const uint16_t service_handle = 0x000c;
-  uint16_t enable = htons(0x0001);
-  write_value(service_handle, (uint8_t *) &enable, sizeof(enable));
+  write_config_value(0x0001);
 }
 
 void
 MiniPro::disable_notifications()
 {
-  const uint16_t service_handle = 0x000c;
-  uint16_t enable = htons(0x0000);
-  write_value(service_handle, (uint8_t *) &enable, sizeof(enable));
+  write_config_value(0x0000);
 }
 
 void
@@ -83,6 +77,7 @@ MiniPro::enter_remote_control_mode()
 {
   packet::EnterRemoteControlMode packet;
   send_packet(packet);
+  printf("enter_remote_control_mode\n");
 }
 
 void
@@ -95,9 +90,8 @@ MiniPro::exit_remote_control_mode()
 void
 MiniPro::drive(int16_t throttle, int16_t steering)
 {
-  packet::Drive packet;
-  packet.setThrottle(throttle);
-  packet.setSteering(steering);
+  printf("drive\n");
+  packet::Drive packet(throttle, steering);
   send_packet(packet);
 }
 
@@ -108,5 +102,11 @@ MiniPro::send_packet(packet::Packet & packet)
   write_value(tx_service_handle_, bytes.data(), bytes.size(), true);
 }
 
-}  // namespace minipro
-}  // namespace jeronibot
+void
+MiniPro::write_config_value(uint16_t value)
+{
+  uint16_t htons_value = htons(value);
+  write_value(config_service_handle_, (uint8_t *) &htons_value, sizeof(htons_value));
+}
+
+}  // namespace jeronibot::minipro

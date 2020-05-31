@@ -17,11 +17,7 @@
 
 #include "minipro/packet.hpp"
 
-namespace jeronibot
-{
-namespace minipro
-{
-namespace packet
+namespace jeronibot::minipro::packet
 {
 
 class ExitRemoteControlMode : public Packet
@@ -30,9 +26,7 @@ public:
   ExitRemoteControlMode();
 };
 
-}  // namespace packet
-}  // namespace minipro
-}  // namespace jeronibot
+}  // namespace jeronibot::minipro:;packet
 
 #endif  // MINIPRO__MINIPRO_EXIT_REMOTE_CONTROL_MODE_HPP_
 

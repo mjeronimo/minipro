@@ -19,9 +19,7 @@
 #include <exception>
 #include <thread>
 
-namespace jeronibot
-{
-namespace util
+namespace jeronibot::util
 {
 
 LoopRate::LoopRate(units::frequency::hertz_t hz)
@@ -53,5 +51,4 @@ LoopRate::sleep()
   prev_ = std::chrono::steady_clock::now();
 }
 
-}  // namespace util
-}  // namespace jeronibot
+}  // namespace jeronibot::util
