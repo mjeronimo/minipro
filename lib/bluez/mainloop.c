@@ -197,7 +197,9 @@ int mainloop_run(void)
 		struct epoll_event events[MAX_EPOLL_EVENTS];
 		int n, nfds;
 
-		nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
+		//nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
+		nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, 100);
+
 		if (nfds < 0)
 			continue;
 

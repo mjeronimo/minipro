@@ -12,19 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BLUETOOTH__UTILS_HPP_
-#define BLUETOOTH__UTILS_HPP_
+#include "minipro/enter_remote_control_mode.hpp"
 
-#include <stdint.h>
+#include <netinet/in.h>
 
-namespace bluetooth {
-
-class utils
+namespace jeronibot::minipro::packet
 {
-public:
-  static const char * to_string(uint8_t ecode);
-};
 
+EnterRemoteControlMode::EnterRemoteControlMode()
+: Packet(Command, ControlDriveBase, EnableRemoteControl)
+{
+  uint16_t enable = 0x0001;
+  uint8_t * p = (uint8_t *) &enable;
+
+  payload_.push_back(*p++);
+  payload_.push_back(*p);
 }
 
-#endif  // BLUETOOTH__UTILS_HPP_
+}  // namespace jeronibot::minipro::packet

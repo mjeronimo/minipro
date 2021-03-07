@@ -12,38 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MINIPRO_MINIPRO_HPP_
-#define MINIPRO_MINIPRO_HPP_
+#ifndef MINIPRO__MINIPRO_HPP_
+#define MINIPRO__MINIPRO_HPP_
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
-#include "bluetooth/bluetooth_le_device.hpp"
+#include "bluetooth/le_client.hpp"
+#include "minipro/packet.hpp"
+#include "util/units.hpp"
 
-namespace minipro
+namespace jeronibot::minipro
 {
 
-class MiniPro : public bluetooth::BluetoothLEDevice
+class MiniPro : public bluetooth::LEClient
 {
 public:
-  MiniPro(const std::string & bt_address);
+  explicit MiniPro(const std::string & bt_address);
   MiniPro() = delete;
 
-  // Use units library (mph, degrees)?
-  int get_current_speed();        // mph
-  int get_battery_level();        // amps
-  int get_voltage();              // volts
-  int get_vehicle_temperature();  // degrees F
+  units::velocity::miles_per_hour_t get_current_speed();
+  units::current::ampere_t get_battery_level();
+  units::voltage::volt_t get_voltage();
+  units::temperature::fahrenheit_t get_vehicle_temperature();
 
   void enable_notifications();
   void disable_notifications();
 
   void enter_remote_control_mode();
+  void drive(int16_t throttle, int16_t steering);
   void exit_remote_control_mode();
 
-  void drive(int16_t speed, int16_t angle);
+protected:
+  void send_packet(packet::Packet & packet);
+  void write_config_value(uint16_t value);
+
+  const uint16_t config_service_handle_{0x000c};
+  const uint16_t tx_service_handle_{0x00e};
 };
 
-}  // namespace minipro
+}  // namespace jeronibot::minipro
 
-#endif // MINIPRO_MINIPRO_HPP_
+#endif  // MINIPRO__MINIPRO_HPP_

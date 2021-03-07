@@ -14,99 +14,97 @@
 
 #include "minipro/minipro.hpp"
 
-#include <string>
+#include "minipro/drive.hpp"
+#include "minipro/enter_remote_control_mode.hpp"
+#include "minipro/exit_remote_control_mode.hpp"
+#include "minipro/packet.hpp"
 
-namespace minipro
+#include <netinet/in.h>
+
+#include <string>
+#include <vector>
+
+namespace jeronibot::minipro
 {
 
-MiniPro::MiniPro(const std::string & minipro_addr)
-: BluetoothLEDevice(minipro_addr)
+MiniPro::MiniPro(const std::string & bt_addr)
+: LEClient(bt_addr)
 {
 }
 
-int
+units::velocity::miles_per_hour_t
 MiniPro::get_current_speed()
 {
   // TODO(mjeronimo):
-  return 0;
+  return 0_mph;
 }
 
-int
+units::current::ampere_t
 MiniPro::get_battery_level()
 {
   // TODO(mjeronimo):
-  return 0;
+  return 0_A;
 }
 
-int
+units::voltage::volt_t
 MiniPro::get_voltage()
 {
   // TODO(mjeronimo):
-  return 0;
+  return 0_V;
 }
 
-int
+units::temperature::fahrenheit_t
 MiniPro::get_vehicle_temperature()
 {
   // TODO(mjeronimo):
-  return 0;
+  return 0_degF;
 }
 
 void
 MiniPro::enable_notifications()
 {
-  char enable_notifications_cmd[] = "0x000c 01 00";
-  write_value(enable_notifications_cmd);
+  write_config_value(0x0001);
 }
 
 void
 MiniPro::disable_notifications()
 {
-  // TODO(mjeronimo):
-  // char enable_notifications_cmd[] = "0x000c 01 00";
-  // write_value(enable_notifications_cmd);
+  write_config_value(0x0000);
 }
 
 void
 MiniPro::enter_remote_control_mode()
 {
-  char enter_remote_control_cmd[] = "-w 0x000e 55 aa 04 0a 03 7a 01 00 73 ff";
-  write_value(enter_remote_control_cmd);
+  packet::EnterRemoteControlMode packet;
+  send_packet(packet);
 }
 
 void
 MiniPro::exit_remote_control_mode()
 {
-  // TODO(mjeronimo):
-  // char enter_remote_control_cmd[] = "-w 0x000e 55 aa 04 0a 03 7a 01 00 73 ff";
-  // write_value(enter_remote_control_cmd);
+  packet::ExitRemoteControlMode packet;
+  send_packet(packet);
 }
 
 void
-MiniPro::drive(int16_t speed, int16_t angle)
+MiniPro::drive(int16_t throttle, int16_t steering)
 {
-  uint16_t sum = 0x06 + 0xa + 0x03 + 0x7b;
-
-  unsigned char * p_a0 = (unsigned char *) &speed;
-  sum += p_a0[0] + p_a0[1];
-
-  unsigned char * p_a1 = (unsigned char *) &angle;
-  sum += p_a1[0] + p_a1[1];
-
-  uint16_t checksum = sum ^ 0xffff;
-  unsigned char * p_checksum = (unsigned char *) &checksum;
-
-  // TODO(mjeronimo): htons, etc.
-
-  char cmd_buf[256];
-  snprintf(
-    cmd_buf, sizeof(cmd_buf), "-w 0x000e 55 aa 06 0a 03 7b %02X %02X %02X %02x %02X %02X",
-    p_a0[0], p_a0[1],
-    p_a1[0], p_a1[1],
-    p_checksum[0], p_checksum[1]
-  );
-
-  write_value(cmd_buf);
+  packet::Drive packet(throttle, steering);
+  send_packet(packet);
 }
 
-}  // namespace minipro
+void
+MiniPro::send_packet(packet::Packet & packet)
+{
+  std::vector<uint8_t> bytes = packet.get_bytes();
+  write_value(tx_service_handle_, bytes.data(), bytes.size(), true);
+}
+
+void
+MiniPro::write_config_value(uint16_t value)
+{
+  uint16_t htons_value = htons(value);
+  write_value(config_service_handle_, (uint8_t *) &htons_value, sizeof(htons_value));
+}
+
+}  // namespace jeronibot::minipro

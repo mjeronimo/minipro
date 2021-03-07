@@ -14,46 +14,41 @@
 
 #include "util/loop_rate.hpp"
 
-#include <cstdio>
 #include <chrono>
+#include <cmath>
+#include <exception>
 #include <thread>
 
-namespace minipro
-{
-namespace util
+namespace jeronibot::util
 {
 
-LoopRate::LoopRate(std::chrono::milliseconds frequency)
-: frequency_(frequency)
+LoopRate::LoopRate(units::frequency::hertz_t hz)
 {
-  // TODO(mjeronimo): check if frequency equal to 0
+  const std::chrono::milliseconds one_second{1000};
+  auto period_value = one_second.count() / units::unit_cast<int>(hz);
 
-  period_ = std::chrono::milliseconds(one_second_ / frequency_);
+  if (std::isinf(period_value) || std::isnan(period_value)) {
+    throw std::runtime_error("LoopRate: divide-by-zero: invalid frequency specified");
+  }
 
-  t1_ = std::chrono::steady_clock::now();
-  t2_ = std::chrono::steady_clock::now();
-}
+  period_ = std::chrono::milliseconds(period_value);
 
-LoopRate::~LoopRate()
-{
+  now_ = std::chrono::steady_clock::now();
+  prev_ = std::chrono::steady_clock::now();
 }
 
 void
 LoopRate::sleep()
 {
-  t1_ = std::chrono::steady_clock::now();
-  std::chrono::duration<double, std::milli> work_time = t1_ - t2_;
+  now_ = std::chrono::steady_clock::now();
+  std::chrono::duration<double, std::milli> work_time = now_ - prev_;
 
   if (work_time < period_) {
     std::chrono::duration<double, std::milli> delta_ms(period_ - work_time);
     std::this_thread::sleep_for(delta_ms);
   }
 
-  t2_ = std::chrono::steady_clock::now();
-  std::chrono::duration<double, std::milli> sleep_time = t2_ - t1_;
-
-  printf("Time: %f \n", (work_time + sleep_time).count());
+  prev_ = std::chrono::steady_clock::now();
 }
 
-}  // namespace util
-}  // namespace minipro
+}  // namespace jeronibot::util

@@ -12,21 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef UTIL_ANSI_COLORS_HPP_
-#define UTIL_ANSI_COLORS_HPP_
+#ifndef BLUETOOTH__L2_CAP_SOCKET_HPP_
+#define BLUETOOTH__L2_CAP_SOCKET_HPP_
 
-namespace minipro {
-namespace util {
+#include <string>
 
-#define COLOR_OFF   	"\x1B[0m"
-#define COLOR_RED   	"\x1B[0;91m"
-#define COLOR_GREEN 	"\x1B[0;92m"
-#define COLOR_YELLOW    "\x1B[0;93m"
-#define COLOR_BLUE  	"\x1B[0;94m"
-#define COLOR_MAGENTA   "\x1B[0;95m"
-#define COLOR_BOLDGRAY  "\x1B[1;30m"
-#define COLOR_BOLDWHITE "\x1B[1;36m"
+extern "C" {
+#include "att.h"
+#include "bluetooth.h"
+#include "uuid.h"
+#include "gatt-db.h"
+#include "gatt-client.h"
+}
 
-}}
+namespace bluetooth {
 
-#endif  // UTIL_ANSI_COLORS_HPP_
+class L2CapSocket
+{
+public:
+  L2CapSocket(bdaddr_t * src, bdaddr_t * dst, uint8_t dst_type = BDADDR_LE_RANDOM, int sec = BT_SECURITY_LOW);
+  ~L2CapSocket();
+
+  int get_handle() { return fd_; }
+
+protected:
+  int fd_{-1};
+  const int ATT_CID{4};
+};
+
+}  // namespace bluetooth
+
+#endif  // BLUETOOTH__L2_CAP_SOCKET_HPP_
+

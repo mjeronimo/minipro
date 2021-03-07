@@ -14,8 +14,19 @@
 
 #include "util/xbox360_controller.hpp"
 
-namespace minipro::util
+#include <string>
+
+namespace jeronibot::util
 {
 
+XBox360Controller::XBox360Controller(const std::string & device_name)
+: Joystick(device_name)
+{
+}
 
-}  // namespace minipro::util
+XBox360Controller::XBox360Controller()
+: XBox360Controller("/dev/input/js0")
+{
+}
+
+}  // namespace jeronibot::util

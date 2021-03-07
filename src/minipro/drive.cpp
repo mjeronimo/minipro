@@ -12,19 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BLUETOOTH__UTILS_HPP_
-#define BLUETOOTH__UTILS_HPP_
+#include "minipro/drive.hpp"
 
-#include <stdint.h>
+#include <netinet/in.h>
 
-namespace bluetooth {
-
-class utils
+namespace jeronibot::minipro::packet
 {
-public:
-  static const char * to_string(uint8_t ecode);
-};
 
+Drive::Drive(uint16_t throttle, uint16_t steering)
+: Packet(Command, ControlDriveBase, SetDrive)
+{
+  uint8_t * p = (uint8_t *) &throttle;
+  payload_.push_back(*p++);
+  payload_.push_back(*p);
+
+  p = (uint8_t *) &steering;
+  payload_.push_back(*p++);
+  payload_.push_back(*p);
 }
 
-#endif  // BLUETOOTH__UTILS_HPP_
+}  // namespace jeronibot::minipro::packet

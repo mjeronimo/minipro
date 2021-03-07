@@ -12,45 +12,57 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef UTIL_JOYSTICK_HPP_
-#define UTIL_JOYSTICK_HPP_
+#ifndef UTIL__JOYSTICK_HPP_
+#define UTIL__JOYSTICK_HPP_
+
+#include <linux/joystick.h>
 
 #include <atomic>
+#include <cstdint>
+#include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <thread>
 
-#include <linux/joystick.h>
+namespace jeronibot::util
+{
 
-namespace minipro {
-namespace util {
+typedef struct AxisState {
+  int16_t x; 
+  int16_t y; 
+} AxisState;
 
 class Joystick
 {
 public:
-  Joystick(const std::string & device_name);
+  explicit Joystick(const std::string & device_name);
   Joystick();
+
   ~Joystick();
 
-  size_t get_axis_count();
-  size_t get_button_count();
+  uint8_t get_num_axes() { return num_axes_; };
+  uint8_t get_num_buttons() { return num_buttons_; };
 
-  short get_axis_0() { return axis0_.load(); }
-  short get_axis_1() { return axis1_.load(); }
+  AxisState get_axis_state(uint8_t axis);
+  void set_button_callback(uint8_t button, std::function<void(bool)> callback);
 
-private:
-  int fd_;
-  struct axis_state { short x; short y; };
+protected:
+  int fd_{-1};
 
-  size_t get_axis_state(struct ::js_event *event, struct axis_state axes[3]);
+  uint8_t num_axes_{0};
+  uint8_t num_buttons_{0};
+
+  struct XY { std::atomic<int16_t> x; std::atomic<int16_t> y; };
+  std::map<uint8_t, struct XY> axis_map_;
+
+  std::map<uint8_t, std::function<void(int)>> button_map_;
 
   void input_thread_func();
+  std::atomic<bool> should_exit_{false};
   std::unique_ptr<std::thread> input_thread_;
-
-  std::atomic<short> axis0_;
-  std::atomic<short> axis1_;
 };
 
-}}
+}  // namespace jeronibot::util
 
-#endif  // UTIL_JOYSTICK_HPP_
+#endif  // UTIL__JOYSTICK_HPP_
